@@ -23,10 +23,16 @@ jobs:
     - name: Install Android SDK
       uses: android-actions/setup-android@v3
       with:
-        sdk-api-level: '35' # Укажите нужную версию SDK
-        ndk-api-level: '28' # Укажите минимальный уровень API NDK (может отличаться)
+        sdk-api-level: '35'
+        ndk-api-level: '28'
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Build with Gradle
       run: ./gradlew build
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: app-debug.apk
+        path: app/build/outputs/apk/debug/app-debug.apk

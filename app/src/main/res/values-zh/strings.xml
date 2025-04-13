@@ -45,8 +45,12 @@
     <string name="config">配置</string>
     <string name="overlay_opacity">覆盖按钮不透明度</string>
     <string name="shortcut_opacity">快捷按钮不透明度</string>
+    <string name="overlay_icon">覆盖图标</string>
+    <string name="overlay_icon_description">更改浮动按钮图标</string>
     <string name="overlay_opacity_settings">不透明度设置</string>
     <string name="overlay_opacity_description">调整叠加层和快捷按钮的透明度</string>
+    <string name="overlay_border_color">Цвет границы наложения</string>
+    <string name="overlay_border_color_description">Изменить цвет границы плавающей кнопки</string>
     <string name="request_ignore_battery_optimization">我们需要忽略电池优化以保持连接</string>
     <string name="ignore_battery_optimization_denied">忽略电池优化权限被拒绝</string>
     <string name="shortcut">快捷方式</string>

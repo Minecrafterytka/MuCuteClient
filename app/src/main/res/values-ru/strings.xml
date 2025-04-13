@@ -47,8 +47,12 @@
     <string name="config">Конфигурации</string>
     <string name="overlay_opacity">Прозрачность кнопки</string>
     <string name="shortcut_opacity">Прозрачность ярлыка</string>
+    <string name="overlay_icon">Значок наложения</string>
+    <string name="overlay_icon_description">Изменить значок плавающей кнопки</string>
     <string name="overlay_opacity_settings">Настройки прозрачности</string>
     <string name="overlay_opacity_description">Настройка прозрачности кнопок и ярлыков</string>
+    <string name="overlay_border_color">Цвет границы наложения</string>
+    <string name="overlay_border_color_description">Изменить цвет границы плавающей кнопки</string>
     <string name="request_ignore_battery_optimization">Для стабильного соединения необходимо разрешение на игнорирование оптимизации батареи</string>
     <string name="ignore_battery_optimization_denied">Нет разрешения на игнорирование оптимизации батареи</string>
     <string name="shortcut">Ярлык</string>

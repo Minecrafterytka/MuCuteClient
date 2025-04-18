@@ -5,14 +5,18 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.widget.Toast
+import android.view.WindowManager
+import android.graphics.PixelFormat
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.mucheng.mucute.client.game.AccountManager
 import com.mucheng.mucute.client.game.GameSession
 import com.mucheng.mucute.client.game.ModuleManager
+import com.mucheng.mucute.client.game.module.visual.ESPModule
 import com.mucheng.mucute.client.model.CaptureModeModel
 import com.mucheng.mucute.client.overlay.OverlayManager
+import com.mucheng.mucute.client.render.RenderOverlayView
 import com.mucheng.mucute.relay.MuCuteRelay
 import com.mucheng.mucute.relay.MuCuteRelaySession
 import com.mucheng.mucute.relay.address.MuCuteAddress
@@ -33,6 +37,9 @@ object Services {
     private var muCuteRelay: MuCuteRelay? = null
 
     private var thread: Thread? = null
+
+    private var renderView: RenderOverlayView? = null
+    private var windowManager: WindowManager? = null
 
     var isActive by mutableStateOf(false)
 
@@ -56,6 +63,8 @@ object Services {
         handler.post {
             OverlayManager.show(context)
         }
+
+        setupOverlay(context)
 
         this.thread = thread(
             name = "MuCuteRelayThread",
@@ -110,6 +119,7 @@ object Services {
             handler.post {
                 OverlayManager.dismiss()
             }
+            removeOverlay()
             isActive = false
             muCuteRelay?.disconnect()
             thread?.interrupt()
@@ -132,6 +142,32 @@ object Services {
             module.session = session
         }
         Log.e("Services", "Init session")
+    }
+
+    private fun setupOverlay(context: Context) {
+        windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+            PixelFormat.TRANSLUCENT
+        )
+
+        renderView = RenderOverlayView(context)
+        ESPModule.setRenderView(renderView!!)
+
+        handler.post {
+            windowManager?.addView(renderView, params)
+        }
+    }
+
+    private fun removeOverlay() {
+        renderView?.let { view ->
+            windowManager?.removeView(view)
+            renderView = null
+        }
     }
 
 }

@@ -30,7 +30,7 @@ object TranslationManager {
         put("anti_afk", "Anti AFK")
         put("auto_walk", "Auto Walk")
         put("desync", "Desync")
-        put("position_logger", "Tracer")
+        put("position_logger", "Position Logger")
         put("killaura", "KillAura")
         put("motion_fly", "Motion Fly")
         put("free_camera", "Free Camera")
@@ -83,6 +83,7 @@ object TranslationManager {
         put("coordinates", "Coordinates")
         put("mining_fatigue", "Mining Fatigue")
         put("world_state", "World State")
+        put("esp", "ESP")
 
         // Below for module options
         put("times", "Times")
@@ -159,6 +160,21 @@ object TranslationManager {
         put("show_chunks", "Show Chunks")
         put("colored_text", "Colored Text")
         put("update_interval", "Update Interval")
+        put("fov", "FOV")
+        put("stroke_width", "Stroke Width")
+        put("color_red", "Red")
+        put("color_green", "Green")
+        put("color_blue", "Blue")
+        put("show_all_entities", "Show All Entities")
+        put("show_distance", "Show Distance")
+        put("show_names", "NameTags")
+        put("2d_box", "2D Box")
+        put("3d_box", "3D Box")
+        put("corner_box", "Corner Box")
+        put("tracers", "Tracers")
+        put("tracer_bottom", "Tracer from Bottom")
+        put("tracer_top", "Tracer from Top")
+        put("tracer_center", "Tracer from Center")
     }
 
     private fun zh() = buildMap {

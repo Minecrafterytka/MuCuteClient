@@ -20,6 +20,7 @@ import com.mucheng.mucute.client.ui.component.*
 import com.mucheng.mucute.client.R
 import com.mucheng.mucute.client.util.LocalSnackbarHostState
 import com.mucheng.mucute.client.util.SnackbarHostStateScope
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -62,7 +63,7 @@ fun AboutPageContent() {
                         onClick = {
                             val intent = Intent(
                                 Intent.ACTION_VIEW,
-                                Uri.parse("https://www.youtube.com/channel/$authId")
+                                "https://www.youtube.com/channel/$authId".toUri()
                             )
                             context.startActivity(intent)
                         },
@@ -88,7 +89,7 @@ fun AboutPageContent() {
                         onClick = {
                             val intent = Intent(
                                 Intent.ACTION_VIEW,
-                                Uri.parse("https://github.com/RadiantByte/MuCuteClient")
+                                "https://github.com/RadiantByte/MuCuteClient".toUri()
                             )
                             context.startActivity(intent)
                         },
@@ -101,6 +102,32 @@ fun AboutPageContent() {
                         ) {
                             Text(
                                 "View Source on GitHub",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Icon(
+                                Icons.AutoMirrored.Filled.OpenInNew,
+                                contentDescription = null
+                            )
+                        }
+                    }
+
+                    OutlinedCard(
+                        onClick = {
+                            val intent = Intent(
+                                Intent.ACTION_VIEW,
+                                "https://discord.com/invite/XFVe5jJU5H".toUri()
+                            )
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            Modifier.padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Join our Discord Server",
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Icon(

@@ -66,6 +66,7 @@ import com.mucheng.mucute.client.game.module.particle.ExplosionParticleModule
 import com.mucheng.mucute.client.game.module.particle.EyeOfEnderDeathParticleModule
 import com.mucheng.mucute.client.game.module.particle.FizzParticleModule
 import com.mucheng.mucute.client.game.module.particle.HeartParticleModule
+import com.mucheng.mucute.client.game.module.visual.ESPModule
 import com.mucheng.mucute.client.game.module.visual.FreeCameraModule
 import com.mucheng.mucute.client.game.module.visual.NetworkInfoModule
 import com.mucheng.mucute.client.game.module.visual.NoHurtCameraModule
@@ -93,6 +94,7 @@ object ModuleManager {
     init {
         with(_modules) {
             add(FlyModule())
+            add(ESPModule())
             add(ZoomModule())
             add(AirJumpModule())
             add(NoClipModule())

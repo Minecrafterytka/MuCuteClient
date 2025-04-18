@@ -152,8 +152,15 @@ object OverlayManager {
     fun updateOverlayBorder() {
         overlayWindows.find { it is OverlayButton }?.let { button ->
             currentContext?.let { context ->
-                (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager)
-                    .updateViewLayout(button.composeView, button.layoutParams)
+                try {
+                    val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+                    // Check if view is attached before updating
+                    if (button.composeView.isAttachedToWindow) {
+                        windowManager.updateViewLayout(button.composeView, button.layoutParams)
+                    }
+                } catch (e: Exception) {
+                    // Ignore IllegalArgumentException when view is not attached
+                }
             }
         }
     }

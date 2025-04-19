@@ -26,6 +26,56 @@ class CommandHandlerModule : Module("command_handler", ModuleCategory.Misc, true
                 "help" -> {
                     displayHelp(args.getOrNull(1))
                 }
+                "goto" -> {
+                    val baritoneModule = ModuleManager.modules.find { it is BaritoneModule } as? BaritoneModule
+                    if (baritoneModule == null) {
+                        session.displayClientMessage("§cBaritone module not found")
+                        return
+                    }
+                    baritoneModule.handleGotoCommand(message)
+                }
+                "replay" -> {
+                    val replayModule = ModuleManager.modules.find { it is ReplayModule } as? ReplayModule
+                    if (replayModule == null) {
+                        session.displayClientMessage("§cReplay module not found")
+                        return
+                    }
+
+                    when (args.getOrNull(1)?.lowercase()) {
+                        "record" -> replayModule.startRecording()
+                        "play" -> replayModule.startPlayback()
+                        "stop" -> {
+                            replayModule.stopRecording()
+                            replayModule.stopPlayback()
+                        }
+                        "save" -> {
+                            val name = args.getOrNull(2)
+                            if (name == null) {
+                                session.displayClientMessage("§cUsage: .replay save <name>")
+                                return
+                            }
+                            replayModule.saveReplay(name)
+                        }
+                        "load" -> {
+                            val name = args.getOrNull(2)
+                            if (name == null) {
+                                session.displayClientMessage("§cUsage: .replay load <name>")
+                                return
+                            }
+                            replayModule.loadReplay(name)
+                        }
+                        else -> {
+                            session.displayClientMessage("""
+                                §l§b[Replay] §r§7Commands:
+                                §f.replay record §7- Start recording
+                                §f.replay play §7- Play last recording  
+                                §f.replay stop §7- Stop recording/playback
+                                §f.replay save <name> §7- Save recording
+                                §f.replay load <name> §7- Load recording
+                            """.trimIndent())
+                        }
+                    }
+                }
                 else -> {
                     val module = ModuleManager.modules.find { it.name.equals(command, ignoreCase = true) }
                     if (module != null && !module.private) {

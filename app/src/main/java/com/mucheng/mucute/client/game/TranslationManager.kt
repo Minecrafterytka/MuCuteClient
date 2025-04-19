@@ -175,6 +175,12 @@ object TranslationManager {
         put("tracer_bottom", "Tracer from Bottom")
         put("tracer_top", "Tracer from Top")
         put("tracer_center", "Tracer from Center")
+        put("interval", "Recording Interval")
+        put("auto_save", "Auto Save")
+        put("speed", "Playback Speed")
+        put("record_inputs", "Record Inputs")
+        put("smooth", "Smooth Playback")
+        put("completion_distance", "Completion Distance")
     }
 
     private fun zh() = buildMap {

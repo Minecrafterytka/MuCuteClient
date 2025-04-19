@@ -40,6 +40,7 @@ import com.mucheng.mucute.client.game.module.effect.SwiftnessModule
 import com.mucheng.mucute.client.game.module.effect.VillageHeroModule
 import com.mucheng.mucute.client.game.module.effect.WeaknessModule
 import com.mucheng.mucute.client.game.module.effect.WitherModule
+import com.mucheng.mucute.client.game.module.misc.BaritoneModule
 import com.mucheng.mucute.client.game.module.misc.CommandHandlerModule
 import com.mucheng.mucute.client.game.module.misc.DesyncModule
 import com.mucheng.mucute.client.game.module.misc.FakeDeathModule
@@ -47,6 +48,7 @@ import com.mucheng.mucute.client.game.module.misc.FakeXPModule
 import com.mucheng.mucute.client.game.module.misc.NoChatModule
 import com.mucheng.mucute.client.game.module.motion.NoClipModule
 import com.mucheng.mucute.client.game.module.misc.PositionLoggerModule
+import com.mucheng.mucute.client.game.module.misc.ReplayModule
 import com.mucheng.mucute.client.game.module.visual.TimeShiftModule
 import com.mucheng.mucute.client.game.module.visual.WeatherControllerModule
 import com.mucheng.mucute.client.game.module.motion.AirJumpModule
@@ -163,6 +165,8 @@ object ModuleManager {
             add(NetworkInfoModule())
             add(MiningFatigueModule())
             add(WorldStateModule())
+            add(ReplayModule())
+            add(BaritoneModule())
         }
     }
 

@@ -9,10 +9,13 @@ import org.cloudburstmc.protocol.bedrock.data.PlayerPermission
 import org.cloudburstmc.protocol.bedrock.data.command.CommandPermission
 import org.cloudburstmc.protocol.bedrock.packet.PlayerAuthInputPacket
 import org.cloudburstmc.protocol.bedrock.packet.RequestAbilityPacket
+import org.cloudburstmc.protocol.bedrock.packet.SetEntityDataPacket
+import org.cloudburstmc.protocol.bedrock.packet.SetEntityMotionPacket
 import org.cloudburstmc.protocol.bedrock.packet.UpdateAbilitiesPacket
 import org.cloudburstmc.math.vector.Vector3f
 import org.cloudburstmc.protocol.bedrock.data.PlayerAuthInputData
-import org.cloudburstmc.protocol.bedrock.packet.SetEntityMotionPacket
+import org.cloudburstmc.protocol.bedrock.data.entity.EntityDataTypes
+import org.cloudburstmc.protocol.bedrock.data.entity.EntityFlag
 
 class FlyModule : Module("fly", ModuleCategory.Motion) {
 
@@ -67,24 +70,26 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
     }
 
     private var canFly = false
+    private var tickCounter = 0
 
     override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
         val packet = interceptablePacket.packet
+
+        // Перехват запросов на способность летать
         if (packet is RequestAbilityPacket && packet.ability == Ability.FLYING) {
             interceptablePacket.intercept()
             return
         }
 
+        // Перехват обновлений способностей
         if (packet is UpdateAbilitiesPacket) {
             interceptablePacket.intercept()
             return
         }
 
+        // Обработка PlayerAuthInputPacket
         if (packet is PlayerAuthInputPacket) {
-            packet.inputData.remove(PlayerAuthInputData.START_FLYING)
-            packet.inputData.remove(PlayerAuthInputData.STOP_FLYING)
-
-            // Enable/disable flying abilities
+            // Включение/выключение способностей полета
             if (!canFly && isEnabled) {
                 enableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
                 session.clientBound(enableFlyAbilitiesPacket)
@@ -93,14 +98,16 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 disableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
                 session.clientBound(disableFlyAbilitiesPacket)
                 canFly = false
-                return
             }
 
-            // Handle vertical movement when enabled
             if (isEnabled) {
-                var verticalMotion = 0f
+                // Удаление флагов полета
+                packet.inputData.remove(PlayerAuthInputData.START_FLYING)
+                packet.inputData.remove(PlayerAuthInputData.STOP_FLYING)
+                packet.inputData.remove(PlayerAuthInputData.FLYING)
 
-                // Space for up, Shift for down
+                // Управление вертикальным движением
+                var verticalMotion = 0f
                 if (packet.inputData.contains(PlayerAuthInputData.JUMPING)) {
                     verticalMotion = flySpeed
                 } else if (packet.inputData.contains(PlayerAuthInputData.SNEAKING)) {
@@ -114,6 +121,25 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     }
                     session.clientBound(motionPacket)
                 }
+
+                // Имитация наземного движения каждые 20 тиков
+                tickCounter++
+                if (tickCounter >= 20) {
+                    // Отправка небольшого движения вниз для имитации приземления
+                    val position = session.localPlayer.position
+                    session.localPlayer.position = position.add(0f, -0.1f, 0f)
+                    tickCounter = 0
+                }
+            }
+        }
+
+        // Обработка SetEntityDataPacket
+        if (packet is SetEntityDataPacket && isEnabled) {
+            val metadata = packet.metadata
+            if (metadata.containsKey(EntityDataTypes.FLAGS)) {
+                val flags = metadata.getFlags(EntityDataTypes.FLAGS)
+                flags.remove(EntityFlag.FLYING)
+                metadata.putFlags(EntityDataTypes.FLAGS, flags)
             }
         }
     }

@@ -15,6 +15,7 @@ import org.cloudburstmc.protocol.bedrock.packet.UpdateAbilitiesPacket
 import org.cloudburstmc.math.vector.Vector3f
 import org.cloudburstmc.protocol.bedrock.data.PlayerAuthInputData
 import org.cloudburstmc.protocol.bedrock.data.entity.EntityDataTypes
+import java.util.EnumSet // Added import for EnumSet
 
 class FlyModule : Module("fly", ModuleCategory.Motion) {
 
@@ -114,11 +115,9 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     session.clientBound(motionPacket)
                 }
 
-                // Position correction skipped due to missing 'position' property
                 tickCounter++
                 if (tickCounter >= 20) {
-                    // TODO: Add proper position correction logic here
-                    tickCounter = 0
+                    tickCounter = 0 // Placeholder for position correction logic
                 }
             }
         }
@@ -126,9 +125,8 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
         if (packet is SetEntityDataPacket && isEnabled) {
             val metadata = packet.metadata
             if (metadata.containsKey(EntityDataTypes.FLAGS)) {
-                val flags = metadata.get(EntityDataTypes.FLAGS) as EnumSet<*>
-                // No EntityFlag.FLYING exists, so no removal is needed
-                metadata.put(EntityDataTypes.FLAGS, flags)
+                val flags = metadata.get(EntityDataTypes.FLAGS) as EnumSet<*> // Line 129 fixed
+                metadata.put(EntityDataTypes.FLAGS, flags) // No flag removal needed
             }
         }
     }

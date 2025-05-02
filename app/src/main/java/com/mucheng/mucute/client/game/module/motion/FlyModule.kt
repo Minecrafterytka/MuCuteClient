@@ -82,16 +82,27 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
         }
 
         if (packet is PlayerAuthInputPacket) {
-            val filteredInputData = packet.inputData.filterNot {
+            val originalInputData = packet.inputData
+            val filteredInputData = originalInputData.filterNot {
                 it == PlayerAuthInputData.START_FLYING || it == PlayerAuthInputData.STOP_FLYING
-            }.toMutableSet()
+            }
 
-            val newPacket = PlayerAuthInputPacket.builder()
-                .from(packet)
-                .inputData(filteredInputData)
-                .build()
+            val newPacket = PlayerAuthInputPacket(
+                packet.moveVector,
+                packet.headYaw,
+                packet.pitch,
+                packet.yaw,
+                packet.position,
+                packet.inputData.javaClass.getDeclaredConstructor(Collection::class.java).newInstance(filteredInputData),
+                packet.playMode,
+                packet.animationData,
+                packet.inputData.flags,
+                packet.itemInteractionData,
+                packet.blockActionData,
+                packet.itemStackRequest
+            )
 
-            interceptablePacket.setPacket(newPacket)
+            interceptablePacket.packet = newPacket
 
             if (!canFly && isEnabled) {
                 enableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId

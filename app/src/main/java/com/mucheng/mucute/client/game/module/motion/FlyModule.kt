@@ -38,7 +38,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 )
             )
             walkSpeed = 0.1f
-            // flySpeed будет установлен динамически при отправке
+            // Скорость полета будет установлена динамически при отправке
         })
     }
 
@@ -91,7 +91,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
              lastPositionSentToServer = null
         } else if (!isEnabled && clientFlightAbilitySent && session?.localPlayer != null) {
             // Модуль выключен, но способность летать клиенту отправлена. Отправляем пакет на отключение.
-            val packetToSend = disableFlyAbabilitiesPacket.clone()
+            val packetToSend = disableFlyAbilitiesPacket.clone()
             packetToSend.uniqueEntityId = session.localPlayer.uniqueEntityId
             session.clientBound(packetToSend) // Отправляем пакет способности КЛИЕНТУ
             clientFlightAbilitySent = false

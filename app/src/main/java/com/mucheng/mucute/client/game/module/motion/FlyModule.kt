@@ -82,6 +82,17 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
         }
 
         if (packet is PlayerAuthInputPacket) {
+            val filteredInputData = packet.inputData.filterNot {
+                it == PlayerAuthInputData.START_FLYING || it == PlayerAuthInputData.STOP_FLYING
+            }.toMutableSet()
+
+            val newPacket = PlayerAuthInputPacket.builder()
+                .from(packet)
+                .inputData(filteredInputData)
+                .build()
+
+            interceptablePacket.setPacket(newPacket)
+
             if (!canFly && isEnabled) {
                 enableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
                 session.clientBound(enableFlyAbilitiesPacket)
@@ -109,8 +120,6 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     }
                     session.clientBound(motionPacket)
                 }
-
-                packet.inputData.remove(PlayerAuthInputData.FLYING)
             }
         }
     }

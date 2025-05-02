@@ -81,10 +81,8 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
         }
 
         if (packet is PlayerAuthInputPacket) {
-            interceptablePacket.modify {
-                packet.inputData.remove(PlayerAuthInputData.START_FLYING)
-                packet.inputData.remove(PlayerAuthInputData.STOP_FLYING)
-            }
+            packet.inputData.remove(PlayerAuthInputData.START_FLYING)
+            packet.inputData.remove(PlayerAuthInputData.STOP_FLYING)
 
             // Enable/disable flying abilities
             if (!canFly && isEnabled) {

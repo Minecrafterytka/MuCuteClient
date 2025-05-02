@@ -70,7 +70,6 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
 
     override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
         val packet = interceptablePacket.packet
-
         if (packet is RequestAbilityPacket && packet.ability == Ability.FLYING) {
             interceptablePacket.intercept()
             return
@@ -82,28 +81,12 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
         }
 
         if (packet is PlayerAuthInputPacket) {
-            val originalInputData = packet.inputData
-            val filteredInputData = originalInputData.filterNot {
-                it == PlayerAuthInputData.START_FLYING || it == PlayerAuthInputData.STOP_FLYING
+            interceptablePacket.modify {
+                packet.inputData.remove(PlayerAuthInputData.START_FLYING)
+                packet.inputData.remove(PlayerAuthInputData.STOP_FLYING)
             }
 
-            val newPacket = PlayerAuthInputPacket(
-                packet.moveVector,
-                packet.headYaw,
-                packet.pitch,
-                packet.yaw,
-                packet.position,
-                packet.inputData.javaClass.getDeclaredConstructor(Collection::class.java).newInstance(filteredInputData),
-                packet.playMode,
-                packet.animationData,
-                packet.inputData.flags,
-                packet.itemInteractionData,
-                packet.blockActionData,
-                packet.itemStackRequest
-            )
-
-            interceptablePacket.packet = newPacket
-
+            // Enable/disable flying abilities
             if (!canFly && isEnabled) {
                 enableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
                 session.clientBound(enableFlyAbilitiesPacket)
@@ -115,9 +98,11 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 return
             }
 
+            // Handle vertical movement when enabled
             if (isEnabled) {
                 var verticalMotion = 0f
 
+                // Space for up, Shift for down
                 if (packet.inputData.contains(PlayerAuthInputData.JUMPING)) {
                     verticalMotion = flySpeed
                 } else if (packet.inputData.contains(PlayerAuthInputData.SNEAKING)) {

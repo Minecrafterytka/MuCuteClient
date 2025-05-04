@@ -19,13 +19,19 @@ class BubbleParticleModule : Module("bubble_particle", ModuleCategory.Particle) 
     private val offsetRadius by floatValue("offset_radius", 1.0f, 0.1f..5.0f)
 
     private var lastParticleTime = 0L
+    private var warningShown = false
 
     override fun onEnabled() {
         super.onEnabled()
-        sendMessage("§bThis particle effect only works when you are underwater!")
+        if (isSessionCreated && !warningShown) {
+            sendMessage("§bThis particle effect only works when you are underwater!")
+            warningShown = true
+        }
     }
 
     private fun sendMessage(msg: String) {
+        if (!isSessionCreated) return
+
         val textPacket = TextPacket().apply {
             type = TextPacket.Type.RAW
             isNeedsTranslation = false

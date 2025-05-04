@@ -12,10 +12,10 @@ import org.cloudburstmc.protocol.bedrock.data.PlayerAuthInputData
 import java.io.File
 import kotlin.concurrent.thread
 
-class ReplayModule : Module("replay", ModuleCategory.Misc) {
+class ReplayModule : Module("replay_mod", ModuleCategory.Misc) {
     private val recordingInterval by intValue("interval", 50, 20..200)
     private val autoSave by boolValue("auto_save", true)
-    private val playbackSpeed by floatValue("speed", 1.0f, 0.1f..5.0f)
+    private val playbackSpeed by floatValue("playback_speed", 1.0f, 0.1f..5.0f)
     private val recordInputs by boolValue("record_inputs", true)
     private val smoothPlayback by boolValue("smooth", true)
 

@@ -84,6 +84,8 @@ object TranslationManager {
         put("mining_fatigue", "Mining Fatigue")
         put("world_state", "World State")
         put("esp", "ESP")
+        put("baritone", "Baritone")
+        put("replay_mod", "ReplayMod")
 
         // Below for module options
         put("times", "Times")
@@ -177,7 +179,7 @@ object TranslationManager {
         put("tracer_center", "Tracer from Center")
         put("interval", "Recording Interval")
         put("auto_save", "Auto Save")
-        put("speed", "Playback Speed")
+        put("playback_speed", "Playback Speed")
         put("record_inputs", "Record Inputs")
         put("smooth", "Smooth Playback")
         put("completion_distance", "Completion Distance")

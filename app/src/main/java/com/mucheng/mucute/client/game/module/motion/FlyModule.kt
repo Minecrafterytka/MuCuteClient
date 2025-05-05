@@ -8,19 +8,19 @@ import org.cloudburstmc.protocol.bedrock.packet.UpdateAbilitiesPacket
 import org.cloudburstmc.protocol.bedrock.packet.RequestAbilityPacket
 import org.cloudburstmc.protocol.bedrock.packet.PlayerAuthInputPacket
 import org.cloudburstmc.protocol.bedrock.packet.SetEntityMotionPacket
-import org.cloudburstmc.protocol.bedrock.packet.SetEntityDataPacket // Убедимся, что этот импорт есть
+import org.cloudburstmc.protocol.bedrock.packet.SetEntityDataPacket
 
 import org.cloudburstmc.protocol.bedrock.data.Ability
 import org.cloudburstmc.protocol.bedrock.data.AbilityLayer
 import org.cloudburstmc.protocol.bedrock.data.PlayerPermission
 import org.cloudburstmc.protocol.bedrock.data.PlayerAuthInputData
 import org.cloudburstmc.protocol.bedrock.data.command.CommandPermission
-import org.cloudburstmc.protocol.bedrock.data.entity.EntityDataTypes // Убедимся, что этот импорт есть
-import org.cloudburstmc.protocol.bedrock.data.entity.EntityFlag // Убедимся, что этот импорт есть
+import org.cloudburstmc.protocol.bedrock.data.entity.EntityDataTypes
+import org.cloudburstmc.protocol.bedrock.data.entity.EntityFlag
 
-import org.cloudburstmc.math.vector.Vector3f // Убедимся, что этот импорт есть
+import org.cloudburstmc.math.vector.Vector3f
 
-import java.util.EnumSet // Убедимся, что этот импорт есть
+import java.util.EnumSet
 
 class FlyModule : Module("fly", ModuleCategory.Motion) {
 
@@ -121,18 +121,16 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
             }
         }
 
-        // Блок SetEntityDataPacket с использованием кода, который вы предоставили
+        // Блок SetEntityDataPacket с использованием фрагмента, который вы предоставили (с metadata.remove)
         if (packet is SetEntityDataPacket) {
             val metadata = packet.metadata
             if (metadata.containsKey(EntityDataTypes.FLAGS)) {
-                // Этот код использует EnumSet.copyOf, который ранее вызывал ошибку компиляции
-                val flags = metadata.get(EntityDataTypes.FLAGS) as? EnumSet<EntityFlag> ?: EnumSet.noneOf(EntityFlag::class.java)
+                // Используем metadata.remove(), что может избежать ошибки компиляции 'val cannot be reassigned'
+                val flags = metadata.remove(EntityDataTypes.FLAGS) as? EnumSet<EntityFlag> ?: EnumSet.noneOf(EntityFlag::class.java)
 
-                val modifiedFlags = EnumSet.copyOf(flags) // Ранее ошибка была здесь
+                flags.remove(EntityFlag.CAN_FLY) // Удаляем флаг полета (может вызвать RuntimeException если flags неизменяемый)
 
-                modifiedFlags.remove(EntityFlag.CAN_FLY)
-
-                metadata.put(EntityDataTypes.FLAGS, modifiedFlags)
+                metadata.put(EntityDataTypes.FLAGS, flags) // Записываем обновленный список
             }
         }
     }

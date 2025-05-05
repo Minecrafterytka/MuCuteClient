@@ -17,6 +17,7 @@ import java.util.EnumSet
 class FlyModule : Module("fly", ModuleCategory.Motion) {
     private var flySpeed by floatValue("flySpeed", 0.15f, 0.1f..1.5f)
 
+    // Пакеты с обновлением способностей
     private val enableFlyAbilitiesPacket = UpdateAbilitiesPacket().apply {
         playerPermission = PlayerPermission.OPERATOR
         commandPermission = CommandPermission.OWNER
@@ -70,21 +71,21 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
     override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
         val packet = interceptablePacket.packet
 
+        // Блокируем запросы на активацию полета
         if (packet is RequestAbilityPacket && packet.ability == Ability.FLYING) {
             interceptablePacket.intercept()
             return
         }
 
+        // Блокируем обновление способностей от клиента
         if (packet is UpdateAbilitiesPacket) {
             interceptablePacket.intercept()
             return
         }
 
+        // Обработка ввода
         if (packet is PlayerAuthInputPacket) {
-            // Fix: Use direct properties instead of method syntax
-            var currentMotionX = packet.motion.x
-            var currentMotionZ = packet.motion.z
-
+            // Переключаем способности полета
             if (!canFly && isEnabled) {
                 enableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
                 session.clientBound(enableFlyAbilitiesPacket)
@@ -96,7 +97,13 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 return
             }
 
+            // Вертикальное движение
             if (isEnabled) {
+                // Сохраняем текущее движение
+                val currentMotionX = packet.motion.x()
+                val currentMotionZ = packet.motion.z()
+                
+                // Вычисляем вертикальную компоненту
                 var verticalMotion = 0f
                 if (packet.inputData.contains(PlayerAuthInputData.JUMPING)) {
                     verticalMotion = flySpeed
@@ -104,6 +111,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     verticalMotion = -flySpeed
                 }
 
+                // Отправляем пакет с сохранением горизонтального движения
                 if (verticalMotion != 0f) {
                     val motionPacket = SetEntityMotionPacket().apply {
                         runtimeEntityId = session.localPlayer.runtimeEntityId
@@ -112,11 +120,24 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     session.clientBound(motionPacket)
                 }
             }
+
+            // Чистим флаги полета из PlayerAuthInputPacket
+            val modifiedInputData = EnumSet.copyOf(packet.inputData).apply {
+                remove(PlayerAuthInputData.START_FLYING)
+                remove(PlayerAuthInputData.STOP_FLYING)
+            }
+
+            val modifiedPacket = packet.clone().apply {
+                inputData.clear()
+                inputData.addAll(modifiedInputData)
+            }
+
+            interceptablePacket.packet = modifiedPacket
         }
 
+        // Скрываем флаг CAN_FLY в метаданных
         if (packet is SetEntityDataPacket) {
             val flags = packet.metadata.get(EntityDataTypes.FLAGS) ?: return
-            // Fix: Explicit type for EnumSet
             val modifiedFlags: EnumSet<EntityFlag> = EnumSet.copyOf(flags)
             modifiedFlags.remove(EntityFlag.CAN_FLY)
             packet.metadata.put(EntityDataTypes.FLAGS, modifiedFlags)

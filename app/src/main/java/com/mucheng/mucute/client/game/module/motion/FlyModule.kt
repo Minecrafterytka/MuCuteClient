@@ -3,16 +3,21 @@ package com.mucheng.mucute.client.game.module.motion
 import com.mucheng.mucute.client.game.InterceptablePacket
 import com.mucheng.mucute.client.game.Module
 import com.mucheng.mucute.client.game.ModuleCategory
+
+import org.cloudburstmc.protocol.bedrock.packet.UpdateAbilitiesPacket
+import org.cloudburstmc.protocol.bedrock.packet.RequestAbilityPacket
+import org.cloudburstmc.protocol.bedrock.packet.PlayerAuthInputPacket
+import org.cloudburstmc.protocol.bedrock.packet.SetEntityMotionPacket
+
 import org.cloudburstmc.protocol.bedrock.data.Ability
 import org.cloudburstmc.protocol.bedrock.data.AbilityLayer
 import org.cloudburstmc.protocol.bedrock.data.PlayerPermission
-import org.cloudburstmc.protocol.bedrock.data.command.CommandPermission
-import org.cloudburstmc.protocol.bedrock.packet.PlayerAuthInputPacket
-import org.cloudburstmc.protocol.bedrock.packet.RequestAbilityPacket
-import org.cloudburstmc.protocol.bedrock.packet.UpdateAbilitiesPacket
-import org.cloudburstmc.math.vector.Vector3f
 import org.cloudburstmc.protocol.bedrock.data.PlayerAuthInputData
-import org.cloudburstmc.protocol.bedrock.packet.SetEntityMotionPacket
+import org.cloudburstmc.protocol.bedrock.data.command.CommandPermission
+
+import org.cloudburstmc.math.vector.Vector3f
+
+import java.util.EnumSet // Все еще нужен для работы с EnumSet
 
 class FlyModule : Module("fly", ModuleCategory.Motion) {
 
@@ -70,11 +75,13 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
 
     override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
         val packet = interceptablePacket.packet
+
+        // Блокируем входящие запросы на активацию полета от сервера
+        // и входящие обновления способностей от сервера
         if (packet is RequestAbilityPacket && packet.ability == Ability.FLYING) {
             interceptablePacket.intercept()
             return
         }
-
         if (packet is UpdateAbilitiesPacket) {
             interceptablePacket.intercept()
             return
@@ -90,11 +97,11 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 disableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
                 session.clientBound(disableFlyAbilitiesPacket)
                 canFly = false
-                return
+                 // Убираем 'return' из исходного кода, чтобы пакет прошел дальше после выключения модуля
             }
 
-            // Handle vertical movement when enabled
             if (isEnabled) {
+                // Handle vertical movement when enabled
                 var verticalMotion = 0f
 
                 // Space for up, Shift for down
@@ -107,11 +114,39 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 if (verticalMotion != 0f) {
                     val motionPacket = SetEntityMotionPacket().apply {
                         runtimeEntityId = session.localPlayer.runtimeEntityId
+                        // Эта строка обнуляет горизонтальное движение
                         motion = Vector3f.from(0f, verticalMotion, 0f)
                     }
                     session.clientBound(motionPacket)
                 }
+
+                // **ДОБАВЛЕНО:** Скрываем флаги полета из PlayerAuthInputPacket перед отправкой на сервер
+                // Используем обход ошибки 'val cannot be reassigned'
+                val originalInputData = packet.inputData // Получаем исходный набор флагов
+
+                // Создаем НОВЫЙ, пустой EnumSet правильного типа вручную
+                val modifiedInputData = EnumSet.noneOf(PlayerAuthInputData::class.java)
+                // Копируем все флаги из оригинального набора, кроме тех, что хотим удалить
+                for (data in originalInputData) {
+                    if (data != PlayerAuthInputData.START_FLYING && data != PlayerAuthInputData.STOP_FLYING) {
+                        modifiedInputData.add(data)
+                    }
+                }
+
+                // Создаем клон пакета с модифицированными данными и заменяем его
+                // Проверяем, были ли изменения, чтобы не клонировать пакет без необходимости (опционально)
+                if (modifiedInputData != originalInputData) {
+                     val modifiedPacket = packet.clone().apply {
+                         inputData.clear() // Очищаем оригинальный набор в клоне
+                         inputData.addAll(modifiedInputData) // Добавляем модифицированный набор
+                         // Остальные данные пакета (позиция, движение, вращение) остаются как в оригинале
+                     }
+                     interceptablePacket.packet = modifiedPacket // Заменяем пакет
+                 }
             }
+            // Пакет PlayerAuthInputPacket (теперь с очищенными флагами полета, если модуль включен) отправляется дальше к серверу.
         }
+        // Блоки MovePlayerPacket и SetEntityDataPacket отсутствуют, как в вашей основе.
     }
+    // Методы onValueChange и log.debug отсутствуют, так как вызывали ошибки.
 }

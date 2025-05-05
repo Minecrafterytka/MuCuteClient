@@ -17,7 +17,6 @@ import java.util.EnumSet
 class FlyModule : Module("fly", ModuleCategory.Motion) {
     private var flySpeed by floatValue("flySpeed", 0.15f, 0.1f..1.5f)
 
-    // Пакеты с обновлением способностей
     private val enableFlyAbilitiesPacket = UpdateAbilitiesPacket().apply {
         playerPermission = PlayerPermission.OPERATOR
         commandPermission = CommandPermission.OWNER
@@ -26,16 +25,9 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
             abilitiesSet.addAll(Ability.entries.toTypedArray())
             abilityValues.addAll(
                 listOf(
-                    Ability.BUILD,
-                    Ability.MINE,
-                    Ability.DOORS_AND_SWITCHES,
-                    Ability.OPEN_CONTAINERS,
-                    Ability.ATTACK_PLAYERS,
-                    Ability.ATTACK_MOBS,
-                    Ability.OPERATOR_COMMANDS,
-                    Ability.MAY_FLY,
-                    Ability.FLY_SPEED,
-                    Ability.WALK_SPEED
+                    Ability.BUILD, Ability.MINE, Ability.DOORS_AND_SWITCHES,
+                    Ability.OPEN_CONTAINERS, Ability.ATTACK_PLAYERS, Ability.ATTACK_MOBS,
+                    Ability.OPERATOR_COMMANDS, Ability.MAY_FLY, Ability.FLY_SPEED, Ability.WALK_SPEED
                 )
             )
             walkSpeed = 0.1f
@@ -51,59 +43,51 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
             abilitiesSet.addAll(Ability.entries.toTypedArray())
             abilityValues.addAll(
                 listOf(
-                    Ability.BUILD,
-                    Ability.MINE,
-                    Ability.DOORS_AND_SWITCHES,
-                    Ability.OPEN_CONTAINERS,
-                    Ability.ATTACK_PLAYERS,
-                    Ability.ATTACK_MOBS,
-                    Ability.OPERATOR_COMMANDS,
-                    Ability.FLY_SPEED,
-                    Ability.WALK_SPEED
+                    Ability.BUILD, Ability.MINE, Ability.DOORS_AND_SWITCHES,
+                    Ability.OPEN_CONTAINERS, Ability.ATTACK_PLAYERS, Ability.ATTACK_MOBS,
+                    Ability.OPERATOR_COMMANDS, Ability.FLY_SPEED, Ability.WALK_SPEED
                 )
             )
             walkSpeed = 0.1f
         })
     }
 
-    private var canFly = false
+    private var isClientFlyAbilitySet = false
 
     override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
         val packet = interceptablePacket.packet
 
-        // Блокируем запросы на активацию полета
-        if (packet is RequestAbilityPacket && packet.ability == Ability.FLYING) {
-            interceptablePacket.intercept()
-            return
+        // Блокируем входящие пакеты способностей от сервера
+        if ((packet is RequestAbilityPacket && packet.ability == Ability.FLYING) || packet is UpdateAbilitiesPacket) {
+             if (isEnabled && isClientFlyAbilitySet) {
+                 interceptablePacket.intercept()
+                 return
+             }
+             return
         }
 
-        // Блокируем обновление способностей от клиента
-        if (packet is UpdateAbilitiesPacket) {
-            interceptablePacket.intercept()
-            return
-        }
-
-        // Обработка ввода
+        // Обработка исходящего пакета ввода игрока (PlayerAuthInputPacket)
         if (packet is PlayerAuthInputPacket) {
-            // Переключаем способности полета
-            if (!canFly && isEnabled) {
+            // Переключаем способности полета у клиента при включении/выключении модуля
+            if (!isClientFlyAbilitySet && isEnabled) {
                 enableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
                 session.clientBound(enableFlyAbilitiesPacket)
-                canFly = true
-            } else if (canFly && !isEnabled) {
+                isClientFlyAbilitySet = true
+                log.debug("Fly module enabled. Sent enable abilities packet to client.")
+            } else if (isClientFlyAbilitySet && !isEnabled) {
                 disableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
                 session.clientBound(disableFlyAbilitiesPacket)
-                canFly = false
-                return
+                isClientFlyAbilitySet = false
+                log.debug("Fly module disabled. Sent disable abilities packet to client.")
             }
 
-            // Вертикальное движение
+            // Обработка, только если модуль включен
             if (isEnabled) {
-                // Сохраняем текущее движение
-                val currentMotionX = packet.motion.x()
-                val currentMotionZ = packet.motion.z()
-                
-                // Вычисляем вертикальную компоненту
+                // Эмулируем вертикальное движение для клиента
+                // FIX: Доступ к компонентам Vector3f осуществляется через свойства (.x, .z)
+                val currentMotionX = packet.motion.x
+                val currentMotionZ = packet.motion.z
+
                 var verticalMotion = 0f
                 if (packet.inputData.contains(PlayerAuthInputData.JUMPING)) {
                     verticalMotion = flySpeed
@@ -111,7 +95,6 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     verticalMotion = -flySpeed
                 }
 
-                // Отправляем пакет с сохранением горизонтального движения
                 if (verticalMotion != 0f) {
                     val motionPacket = SetEntityMotionPacket().apply {
                         runtimeEntityId = session.localPlayer.runtimeEntityId
@@ -119,28 +102,54 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     }
                     session.clientBound(motionPacket)
                 }
-            }
 
-            // Чистим флаги полета из PlayerAuthInputPacket
-            val modifiedInputData = EnumSet.copyOf(packet.inputData).apply {
-                remove(PlayerAuthInputData.START_FLYING)
-                remove(PlayerAuthInputData.STOP_FLYING)
-            }
+                // Чистим флаги полета из PlayerAuthInputPacket, идущего к серверу
+                 val originalInputData = packet.inputData
 
-            val modifiedPacket = packet.clone().apply {
-                inputData.clear()
-                inputData.addAll(modifiedInputData)
-            }
+                 val modifiedInputData = EnumSet.noneOf(PlayerAuthInputData::class.java).apply {
+                     addAll(originalInputData)
+                     remove(PlayerAuthInputData.START_FLYING)
+                     remove(PlayerAuthInputData.STOP_FLYING)
+                 }
 
-            interceptablePacket.packet = modifiedPacket
+                if (modifiedInputData != originalInputData) {
+                    originalInputData.clear()
+                    originalInputData.addAll(modifiedInputData)
+                 }
+            }
         }
 
-        // Скрываем флаг CAN_FLY в метаданных
+        // Обработка исходящего пакета MovePlayerPacket (обход античита onGround)
+        if (packet is MovePlayerPacket) {
+             if (isEnabled) {
+                 // Всегда сообщаем серверу, что мы НА ЗЕМЛЕ
+                 packet.onGround = true
+             }
+        }
+
+        // Скрываем флаг CAN_FLY в метаданных существа (входящий от сервера)
         if (packet is SetEntityDataPacket) {
-            val flags = packet.metadata.get(EntityDataTypes.FLAGS) ?: return
-            val modifiedFlags: EnumSet<EntityFlag> = EnumSet.copyOf(flags)
-            modifiedFlags.remove(EntityFlag.CAN_FLY)
-            packet.metadata.put(EntityDataTypes.FLAGS, modifiedFlags)
+            val flags = packet.metadata.get(EntityDataTypes.FLAGS)
+            if (flags != null) {
+                 // FIX: Используем apply для создания и мутации копии
+                 val modifiedFlags = EnumSet.copyOf(flags).apply {
+                     remove(EntityFlag.CAN_FLY)
+                 }
+                 packet.metadata.put(EntityDataTypes.FLAGS, modifiedFlags)
+            }
+        }
+    }
+
+    // Метод для обновления скорости полета из UI
+    override fun onValueChange(valueName: String, oldValue: Any, newValue: Any) {
+        super.onValueChange(valueName, oldValue, newValue)
+        if (valueName == "flySpeed") {
+            enableFlyAbilitiesPacket.abilityLayers.firstOrNull()?.flySpeed = flySpeed
+            if (isEnabled && isClientFlyAbilitySet) {
+                 enableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
+                 session.clientBound(enableFlyAbilitiesPacket)
+                 log.debug("Fly speed setting updated. Sent updated abilities packet to client.")
+            }
         }
     }
 }

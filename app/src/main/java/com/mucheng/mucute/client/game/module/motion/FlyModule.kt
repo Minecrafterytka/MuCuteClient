@@ -7,17 +7,22 @@ import com.mucheng.mucute.client.game.ModuleCategory
 import org.cloudburstmc.protocol.bedrock.packet.UpdateAbilitiesPacket
 import org.cloudburstmc.protocol.bedrock.packet.RequestAbilityPacket
 import org.cloudburstmc.protocol.bedrock.packet.PlayerAuthInputPacket
-import org.cloudburstmc.protocol.bedrock.packet.SetEntityMotionPacket
+import org.cloudburstmc.protocol.bedrock.packet.SetEntityMotionPacket // Все еще нужен для эмуляции вертикального движения
+import org.cloudburstmc.protocol.bedrock.packet.SetEntityDataPacket // Все еще нужен для SetEntityDataPacket handling
 
 import org.cloudburstmc.protocol.bedrock.data.Ability
 import org.cloudburstmc.protocol.bedrock.data.AbilityLayer
 import org.cloudburstmc.protocol.bedrock.data.PlayerPermission
-import org.cloudburstmc.protocol.bedrock.data.PlayerAuthInputData
+import org.cloudburstmc.protocol.bedrock.data.PlayerAuthInputData // Убедимся, что этот импорт есть
 import org.cloudburstmc.protocol.bedrock.data.command.CommandPermission
 
-import org.cloudburstmc.math.vector.Vector3f
+import org.cloudburstmc.math.vector.Vector3f // Убедимся, что этот импорт есть
 
-import java.util.EnumSet // Все еще нужен для работы с EnumSet
+import java.util.EnumSet // Нужно добавить для работы с EnumSet
+import java.util.Collection // Может понадобиться для работы с коллекциями, хотя EnumSet достаточно
+import org.cloudburstmc.protocol.bedrock.data.entity.EntityDataTypes // Необходим для EntityDataTypes.FLAGS
+import org.cloudburstmc.protocol.bedrock.data.entity.EntityFlag // Необходим для EntityFlag.CAN_FLY
+
 
 class FlyModule : Module("fly", ModuleCategory.Motion) {
 
@@ -72,27 +77,25 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
     }
 
     private var canFly = false
+    // private var tickCounter = 0 // Этот счетчик пока нигде не используется для логики движения
 
     override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
         val packet = interceptablePacket.packet
-
-        // Блокируем входящие запросы на активацию полета от сервера
-        // и входящие обновления способностей от сервера
-        if (packet is RequestAbilityPacket && packet.ability == Ability.FLYING) {
-            interceptablePacket.intercept()
-            return
-        }
-        if (packet is UpdateAbilitiesPacket) {
-            interceptablePacket.intercept()
-            return
+        if ((packet is RequestAbilityPacket && packet.ability == Ability.FLYING) || packet is UpdateAbilitiesPacket) {
+             if (isEnabled && canFly) { // Блокируем только если модуль включен и полет активирован нами
+                 interceptablePacket.intercept()
+                 return
+             }
+             return // Пропускаем, если не наш пакет или модуль выключен
         }
 
         if (packet is PlayerAuthInputPacket) {
-            // Enable/disable flying abilities
+            // Enable/disable flying abilities (отправляем клиенту)
             if (!canFly && isEnabled) {
                 enableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
                 session.clientBound(enableFlyAbilitiesPacket)
                 canFly = true
+                // log.debug("Fly module enabled. Sent enable abilities packet to client.") // Убран лог
             } else if (canFly && !isEnabled) {
                 disableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
                 session.clientBound(disableFlyAbilitiesPacket)
@@ -100,28 +103,10 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                  // Убираем 'return' из исходного кода, чтобы пакет прошел дальше после выключения модуля
             }
 
+            // Обработка, только если модуль включен
             if (isEnabled) {
-                // Handle vertical movement when enabled
-                var verticalMotion = 0f
-
-                // Space for up, Shift for down
-                if (packet.inputData.contains(PlayerAuthInputData.JUMPING)) {
-                    verticalMotion = flySpeed
-                } else if (packet.inputData.contains(PlayerAuthInputData.SNEAKING)) {
-                    verticalMotion = -flySpeed
-                }
-
-                if (verticalMotion != 0f) {
-                    val motionPacket = SetEntityMotionPacket().apply {
-                        runtimeEntityId = session.localPlayer.runtimeEntityId
-                        // Эта строка обнуляет горизонтальное движение
-                        motion = Vector3f.from(0f, verticalMotion, 0f)
-                    }
-                    session.clientBound(motionPacket)
-                }
-
-                // **ДОБАВЛЕНО:** Скрываем флаги полета из PlayerAuthInputPacket перед отправкой на сервер
-                // Используем обход ошибки 'val cannot be reassigned'
+                // **ИСПРАВЛЕНО:** Скрываем флаги полета из PlayerAuthInputPacket перед отправкой на сервер
+                // Используем обход ошибки 'val cannot be reassigned' с ручным созданием EnumSet
                 val originalInputData = packet.inputData // Получаем исходный набор флагов
 
                 // Создаем НОВЫЙ, пустой EnumSet правильного типа вручную
@@ -135,18 +120,77 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
 
                 // Создаем клон пакета с модифицированными данными и заменяем его
                 // Проверяем, были ли изменения, чтобы не клонировать пакет без необходимости (опционально)
-                if (modifiedInputData != originalInputData) {
-                     val modifiedPacket = packet.clone().apply {
-                         inputData.clear() // Очищаем оригинальный набор в клоне
-                         inputData.addAll(modifiedInputData) // Добавляем модифицированный набор
-                         // Остальные данные пакета (позиция, движение, вращение) остаются как в оригинале
-                     }
-                     interceptablePacket.packet = modifiedPacket // Заменяем пакет
+                // Проверка modifiedInputData != originalInputData для EnumSet может работать не всегда,
+                // но если мы всегда клонируем и заменяем пакет, это безопаснее.
+                // Восстановим логику клонирования из более ранних версий, которая работала
+                 val modifiedPacket = packet.clone().apply {
+                     inputData.clear() // Очищаем оригинальный набор в клоне
+                     inputData.addAll(modifiedInputData) // Добавляем модифицированный набор
+                     // Остальные данные пакета (позиция, движение, вращение) остаются как в оригинале
                  }
+                 interceptablePacket.packet = modifiedPacket // Заменяем пакет
+
+
+                // Handle vertical movement when enabled (как в вашей основе)
+                var verticalMotion = 0f
+                // Space for up, Shift for down
+                if (originalInputData.contains(PlayerAuthInputData.JUMPING)) { // Используем originalInputData для проверки ввода
+                    verticalMotion = flySpeed
+                } else if (originalInputData.contains(PlayerAuthInputData.SNEAKING)) { // Используем originalInputData для проверки ввода
+                    verticalMotion = -flySpeed
+                }
+
+                if (verticalMotion != 0f) {
+                    val motionPacket = SetEntityMotionPacket().apply {
+                        runtimeEntityId = session.localPlayer.runtimeEntityId
+                        // Как в вашей основе: Эта строка обнуляет горизонтальное движение
+                        motion = Vector3f.from(0f, verticalMotion, 0f)
+                    }
+                    session.clientBound(motionPacket) // Отправляем ТОЛЬКО клиенту
+                }
+
+                 // **УДАЛЕННЫЙ КОД:** tickCounter++
+                 // tickCounter пока не используется для логики движения
             }
             // Пакет PlayerAuthInputPacket (теперь с очищенными флагами полета, если модуль включен) отправляется дальше к серверу.
         }
-        // Блоки MovePlayerPacket и SetEntityDataPacket отсутствуют, как в вашей основе.
+
+        // **ИСПРАВЛЕНО:** Скрываем флаг CAN_FLY в метаданных (входящий от сервера)
+        if (packet is SetEntityDataPacket) {
+            val metadata = packet.metadata
+            if (metadata.containsKey(EntityDataTypes.FLAGS)) {
+                 // Получаем набор флагов, который, как ожидается, является Set<EntityFlag>
+                val flags = metadata.get(EntityDataTypes.FLAGS)
+
+                // Убедимся, что флаги - это Set<EntityFlag> и они не null
+                if (flags is Set<*> && flags != null) { // Проверяем тип
+                     val entityFlags = flags as Set<EntityFlag> // Безопасное приведение типов
+
+                     // **ОБХОД ОШИБКИ 'val cannot be reassigned'**
+                     // Вместо EnumSet.copyOf(entityFlags).apply { remove(...) }, создаем новый EnumSet вручную
+                     val modifiedFlags = EnumSet.noneOf(EntityFlag::class.java) // Создаем новый EnumSet для EntityFlag
+                     // Копируем все флаги из оригинального набора, кроме EntityFlag.CAN_FLY
+                     for (flag in entityFlags) {
+                         if (flag != EntityFlag.CAN_FLY) {
+                             modifiedFlags.add(flag)
+                         }
+                     }
+
+                     // Записываем модифицированный набор флагов обратно в метаданные
+                     // Этот код остался без изменений из предыдущих попыток
+                     // Проверяем, были ли изменения (опционально)
+                     if (modifiedFlags != entityFlags) { // Проверка может работать не всегда
+                         metadata.put(EntityDataTypes.FLAGS, modifiedFlags) // Записываем измененный набор
+                     } else {
+                          // Даже если набор не изменился (например, CAN_FLY не было),
+                          // можем всегда записывать modifiedFlags обратно, или не делать ничего.
+                          // Давайте запишем modifiedFlags обратно на всякий случай.
+                          metadata.put(EntityDataTypes.FLAGS, modifiedFlags)
+                     }
+                 }
+            }
+        }
+        // Блоки MovePlayerPacket, onValueChange, log.debug отсутствуют.
     }
-    // Методы onValueChange и log.debug отсутствуют, так как вызывали ошибки.
+    // Методы onValueChange и log.debug отсутствуют.
 }

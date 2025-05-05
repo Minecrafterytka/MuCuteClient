@@ -17,7 +17,8 @@ import org.cloudburstmc.protocol.bedrock.data.command.CommandPermission
 
 import org.cloudburstmc.math.vector.Vector3f
 
-import java.util.EnumSet
+import java.util.EnumSet // Все еще нужен для работы с EnumSet
+import java.util.Collection // Может понадобиться для работы с коллекциями
 
 class FlyModule : Module("fly", ModuleCategory.Motion) {
     private var flySpeed by floatValue("flySpeed", 0.15f, 0.1f..1.5f)
@@ -98,19 +99,28 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     session.clientBound(motionPacket)
                 }
 
-                val originalInputData = packet.inputData
-                val modifiedInputData = EnumSet.copyOf(originalInputData).apply {
-                    remove(PlayerAuthInputData.START_FLYING)
-                    remove(PlayerAuthInputData.STOP_FLYING)
+                // **ОБХОД ОШИБКИ 'val cannot be reassigned'**
+                // Вместо EnumSet.copyOf(...).apply {...}, создаем новый EnumSet вручную
+                val originalInputData = packet.inputData // Получаем исходный набор флагов
+
+                // Создаем НОВЫЙ, пустой EnumSet правильного типа
+                val modifiedInputData = EnumSet.noneOf(PlayerAuthInputData::class.java)
+                // Копируем все флаги из оригинального набора, кроме тех, что хотим удалить
+                for (data in originalInputData) {
+                    if (data != PlayerAuthInputData.START_FLYING && data != PlayerAuthInputData.STOP_FLYING) {
+                        modifiedInputData.add(data)
+                    }
                 }
 
+                // Создаем клон пакета с модифицированными данными
+                // Этот код остался без изменений
                 if (modifiedInputData != originalInputData) {
-                    val modifiedPacket = packet.clone().apply {
-                        inputData.clear()
-                        inputData.addAll(modifiedInputData)
-                    }
-                    interceptablePacket.packet = modifiedPacket
-                }
+                     val modifiedPacket = packet.clone().apply {
+                         inputData.clear()
+                         inputData.addAll(modifiedInputData)
+                     }
+                     interceptablePacket.packet = modifiedPacket
+                 }
             }
         }
     }

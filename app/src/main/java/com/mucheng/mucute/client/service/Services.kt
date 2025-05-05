@@ -1,6 +1,7 @@
 package com.mucheng.mucute.client.service
 
 import android.content.Context
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -147,19 +148,38 @@ object Services {
     private fun setupOverlay(context: Context) {
         windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-            PixelFormat.TRANSLUCENT
-        )
+        val params = WindowManager.LayoutParams().apply {
+            width = WindowManager.LayoutParams.MATCH_PARENT
+            height = WindowManager.LayoutParams.MATCH_PARENT
+            type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            } else {
+                WindowManager.LayoutParams.TYPE_SYSTEM_ALERT
+            }
+            flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+            format = PixelFormat.TRANSLUCENT
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                alpha = 0.8f
+                flags = flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                setFitInsetsTypes(0)
+                setFitInsetsSides(0)
+            }
+        }
 
         renderView = RenderOverlayView(context)
         ESPModule.setRenderView(renderView!!)
 
         handler.post {
-            windowManager?.addView(renderView, params)
+            try {
+                windowManager?.addView(renderView, params)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                context.toast("Failed to add overlay view: ${e.message}")
+            }
         }
     }
 

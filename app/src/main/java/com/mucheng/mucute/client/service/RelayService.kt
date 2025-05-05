@@ -33,7 +33,13 @@ class RelayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        startForegroundImmediate()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            startForegroundImmediate()
+        } else {
+            startForeground(NOTIFICATION_ID, createNotification().build())
+        }
+
         createNotificationChannel()
 
         wakeLock = (getSystemService(POWER_SERVICE) as PowerManager).run {
@@ -55,15 +61,27 @@ class RelayService : Service() {
     }
 
     private fun startForegroundImmediate() {
-        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+        val notification = createNotification().build()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            startForeground(
+                NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
+    }
+
+    private fun createNotification(): NotificationCompat.Builder {
+        return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle("MuCute Relay")
             .setContentText("Relay service is running")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .build()
-
-        startForeground(NOTIFICATION_ID, notification)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -93,12 +111,7 @@ class RelayService : Service() {
     }
 
     private fun startForegroundService() {
-        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("MuCute Relay")
-            .setContentText("Relay service is running")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
+        val notification = createNotification().build()
 
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(

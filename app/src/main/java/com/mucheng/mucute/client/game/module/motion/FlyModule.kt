@@ -3,200 +3,203 @@ package com.mucheng.mucute.client.game.module.motion
 import com.mucheng.mucute.client.game.InterceptablePacket
 import com.mucheng.mucute.client.game.Module
 import com.mucheng.mucute.client.game.ModuleCategory
+import org.cloudburstmc.math.vector.Vector3f
+import org.cloudburstmc.math.vector.Vector2f
 import org.cloudburstmc.protocol.bedrock.data.Ability
 import org.cloudburstmc.protocol.bedrock.data.AbilityLayer
 import org.cloudburstmc.protocol.bedrock.data.PlayerPermission
 import org.cloudburstmc.protocol.bedrock.data.command.CommandPermission
-import org.cloudburstmc.protocol.bedrock.packet.PlayerAuthInputPacket
-import org.cloudburstmc.protocol.bedrock.packet.RequestAbilityPacket
-import org.cloudburstmc.protocol.bedrock.packet.UpdateAbilitiesPacket
-import org.cloudburstmc.math.vector.Vector3f
+import org.cloudburstmc.protocol.bedrock.packet.*
 import org.cloudburstmc.protocol.bedrock.data.PlayerAuthInputData
-// Добавляем пакеты, которые будем перехватывать от сервера, даже без явного направления
-import org.cloudburstmc.protocol.bedrock.packet.MovePlayerPacket
-import org.cloudburstmc.protocol.bedrock.packet.SetEntityMotionPacket
+import org.cloudburstmc.protocol.bedrock.data.entity.EntityDataTypes
+import org.cloudburstmc.protocol.bedrock.data.entity.EntityFlag
+import org.cloudburstmc.protocol.common.PacketSignal
 
+import java.util.EnumSet
+import kotlin.math.cos
+import kotlin.math.sin
 
 class FlyModule : Module("fly", ModuleCategory.Motion) {
 
-    private var flySpeed by floatValue("flySpeed", 0.15f, 0.1f..1.5f)
+    private var flySpeed by floatValue("flySpeed", 0.1f, 0.05f..0.3f)
+    private var isFlyingLocally = false // Отслеживаем локальный статус полета
 
-    // Пакеты для включения/выключения полета на стороне клиента (чтобы работало управление)
-    // Отправляем их клиенту, чтобы кнопки прыжка/красться использовались как ввод для вертикали
+    // Пакет для включения способностей полета на клиенте
     private val enableFlyAbilitiesPacket = UpdateAbilitiesPacket().apply {
-        playerPermission = PlayerPermission.OPERATOR // Или PLAYER/MEMBER
-        commandPermission = CommandPermission.OWNER // Или MEMBER/ANY
+        playerPermission = PlayerPermission.MEMBER
+        commandPermission = CommandPermission.NORMAL
         abilityLayers.add(AbilityLayer().apply {
             layerType = AbilityLayer.Type.BASE
-            abilitiesSet.addAll(Ability.entries.toTypedArray())
-            abilityValues.addAll(
-                arrayOf(
-                    Ability.BUILD, Ability.MINE, Ability.DOORS_AND_SWITCHES, Ability.OPEN_CONTAINERS,
-                    Ability.ATTACK_PLAYERS, Ability.ATTACK_MOBS, Ability.OPERATOR_COMMANDS,
-                    Ability.MAY_FLY, // Включаем полет для клиента
-                    Ability.FLY_SPEED, Ability.WALK_SPEED
-                )
-            )
+            abilitiesSet.addAll(Ability.DEFAULT_ABILITIES)
+            abilitiesSet.add(Ability.MAY_FLY)
+            abilitiesSet.add(Ability.FLYING)
+            abilityValues.addAll(Ability.DEFAULT_ABILITIES)
+            abilityValues.add(Ability.MAY_FLY)
+            abilityValues.add(Ability.FLYING)
+            abilityValues.add(Ability.FLY_SPEED)
             walkSpeed = 0.1f
-            // Скорость полета будет установлена динамически при отправке
+            // flySpeed будет установлен перед отправкой
         })
     }
 
+    // Пакет для выключения способностей полета на клиенте
     private val disableFlyAbilitiesPacket = UpdateAbilitiesPacket().apply {
-        playerPermission = PlayerPermission.OPERATOR
-        commandPermission = CommandPermission.OWNER
+        playerPermission = PlayerPermission.MEMBER
+        commandPermission = CommandPermission.NORMAL
         abilityLayers.add(AbilityLayer().apply {
             layerType = AbilityLayer.Type.BASE
-             abilitiesSet.addAll(Ability.entries.toTypedArray())
-             abilityValues.addAll(
-                 arrayOf(
-                     Ability.BUILD, Ability.MINE, Ability.DOORS_AND_SWITCHES, Ability.OPEN_CONTAINERS,
-                     Ability.ATTACK_PLAYERS, Ability.ATTACK_MOBS, Ability.OPERATOR_COMMANDS,
-                     // Ability.MAY_FLY не добавляем
-                     Ability.FLY_SPEED, Ability.WALK_SPEED
-                 )
-             )
+            abilitiesSet.addAll(Ability.DEFAULT_ABILITIES)
+            abilityValues.addAll(Ability.DEFAULT_ABILITIES)
             walkSpeed = 0.1f
-         })
+            flySpeed = 0.05f // Стандартная скорость
+        })
     }
 
-    // Флаг для отслеживания, отправили ли мы клиенту пакет, разрешающий полет
-    // Используется для отправки пакета способности только один раз при включении модуля
-    private var clientFlightAbilitySent = false
-
-    // ** Важно для Packet Flight **
-    // Позиция игрока, которую мы *последний раз отправили* серверу.
-    // Используется для расчета дельты в следующем PlayerAuthInputPacket.
-    // Инициализируется при включении модуля на основе позиции клиента.
-    private var lastPositionSentToServer: Vector3f? = null
-
-
-    // onEnable/onDisable отсутствуют в этой структуре, используем beforePacketBound для управления состоянием
-
-    override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
+    // Перехват ВХОДЯЩИХ пакетов
+    override fun beforePacketBound(interceptablePacket: InterceptablePacket): PacketSignal {
+        if (!interceptablePacket.isClientBound) return PacketSignal.CONTINUE
         val packet = interceptablePacket.packet
 
-        // ** Логика управления состоянием модуля и отправки способностей клиенту **
-        // Эта часть адаптирована к структуре без onEnable/onDisable
-        if (isEnabled && !clientFlightAbilitySent && session?.localPlayer != null) {
-             // Модуль включен, и мы еще не отправили клиенту способность летать
-             val packetToSend = enableFlyAbilitiesPacket.clone()
-             packetToSend.uniqueEntityId = session.localPlayer.uniqueEntityId
-             // Устанавливаем скорость полета динамически из настройки модуля
-             packetToSend.abilityLayers.find { it.layerType == AbilityLayer.Type.BASE }?.flySpeed = this.flySpeed
-             session.clientBound(packetToSend) // Отправляем пакет способности КЛИЕНТУ
-             clientFlightAbilitySent = true
-             // При первом включении сбрасываем отслеживаемую позицию.
-             // Она будет инициализирована первым же пакетом PlayerAuthInputPacket.
-             lastPositionSentToServer = null
-        } else if (!isEnabled && clientFlightAbilitySent && session?.localPlayer != null) {
-            // Модуль выключен, но способность летать клиенту отправлена. Отправляем пакет на отключение.
-            val packetToSend = disableFlyAbilitiesPacket.clone()
-            packetToSend.uniqueEntityId = session.localPlayer.uniqueEntityId
-            session.clientBound(packetToSend) // Отправляем пакет способности КЛИЕНТУ
-            clientFlightAbilitySent = false
-            // При выключении сбрасываем отслеживаемую позицию
-            lastPositionSentToServer = null
+        // Блокируем UpdateAbilitiesPacket от сервера, если модуль включен
+        if (packet is UpdateAbilitiesPacket && isEnabled) {
+            // logger.debug("Blocked incoming UpdateAbilitiesPacket") // Комментарий для лога убран
+            sendEnablePacketIfNeeded()
+            return PacketSignal.SUPPRESS
+        }
+        return PacketSignal.CONTINUE
+    }
+
+    // Перехват ИСХОДЯЩИХ пакетов
+    override fun beforePacketServer(interceptablePacket: InterceptablePacket): PacketSignal {
+        if (!interceptablePacket.isServerBound) return PacketSignal.CONTINUE
+        val packet = interceptablePacket.packet
+
+        // Если модуль выключен, отключаем фейковые способности и пропускаем пакет
+        if (!isEnabled) {
+            sendDisablePacketIfNeeded()
+            return PacketSignal.CONTINUE
         }
 
+        // --- Логика включенного модуля ---
 
-        // ** Перехватываем определенные пакеты независимо от направления **
-        // (т.к. информация о направлении недоступна в этой структуре)
-        // Полагаемся на тип пакета и контекст (наш ли игрок), чтобы принять решение.
-
-        // Перехватываем RequestAbilityPacket (обычно C->S или S->C)
-        if (packet is RequestAbilityPacket && isEnabled) { // Перехватываем только когда модуль включен
-             // Оригинальный код перехватывал все RequestAbilityPacket для FLYING
-             // Это, вероятно, нужно для скрытия запроса клиента или запроса сервера о состоянии FLYING.
-             if (packet.ability == Ability.FLYING) { // Проверяем конкретную способность
-                interceptablePacket.intercept() // Предотвращаем попадание пакета в пункт назначения
-                return
-             }
+        // Блокируем RequestAbilityPacket(FLYING)
+        if (packet is RequestAbilityPacket && packet.ability == Ability.FLYING) {
+            // logger.debug("Blocked outgoing RequestAbilityPacket(FLYING)") // Комментарий для лога убран
+            return PacketSignal.SUPPRESS
         }
 
-        // Перехватываем UpdateAbilitiesPacket (обычно S->C)
-        if (packet is UpdateAbilitiesPacket && isEnabled) { // Перехватываем только когда модуль включен
-            // Оригинальный код перехватывал все UpdateAbilitiesPacket.
-            // Это предотвращает сервер от изменения способностей клиента, включая MAY_FLY, который мы отправили.
-            interceptablePacket.intercept()
-            return
-        }
-
-        // Перехватываем MovePlayerPacket (обычно S->C коррекции/телепорты, C->S в очень старых версиях)
-        // Если пакет для нашего игрока и модуль включен, перехватываем.
-        // Это попытка предотвратить серверные коррекции позиции, которые могут конфликтовать с packet flight.
-        if (packet is MovePlayerPacket && isEnabled && session?.localPlayer != null && packet.runtimeEntityId == session.localPlayer.runtimeEntityId) {
-             // Без информации о направлении, мы не знаем точно, это коррекция сервера или старый пакет клиента.
-             // Предполагаем, что для современных версий это почти всегда S->C коррекция.
-             interceptablePacket.intercept() // Перехватываем, чтобы сервер не менял нашу позицию
-             return
-        }
-
-         // Перехватываем SetEntityMotionPacket (обычно S->C)
-         // Если пакет для нашего игрока и модуль включен, перехватываем.
-         // Предотвращает сервер от принудительной установки скорости нашего игрока.
-         if (packet is SetEntityMotionPacket && isEnabled && session?.localPlayer != null && packet.runtimeEntityId == session.localPlayer.runtimeEntityId) {
-             interceptablePacket.intercept()
-             return
-         }
-
-
-        // ** Перехватываем PlayerAuthInputPacket (ВСЕГДА C->S) **
-        // Этот пакет от клиента к серверу. Мы будем его ИЗМЕНЯТЬ.
-        if (packet is PlayerAuthInputPacket) {
-            // Если модуль включен, манипулируем этим пакетом для симуляции полета
-            if (isEnabled) {
-                // Инициализируем lastPositionSentToServer при самом первом PAI пакете после включения
-                if (lastPositionSentToServer == null) {
-                    // Берем текущую позицию клиента как стартовую точку для нашего packet flight
-                    lastPositionSentToServer = packet.position
+        // Модифицируем SetEntityDataPacket: Убираем флаги полета и глайдинга
+        if (packet is SetEntityDataPacket) {
+            if (session.localPlayer != null && packet.runtimeEntityId == session.localPlayer.runtimeEntityId) {
+                var modified = false
+                // Обрабатываем FLAGS
+                packet.metadata.get(EntityDataTypes.FLAGS)?.let { flags ->
+                    if (flags.contains(EntityFlag.CAN_FLY) || flags.contains(EntityFlag.GLIDING) || flags.contains(EntityFlag.WASD_AIR_CONTROLLED)) {
+                        val mutableFlags = EnumSet.copyOf(flags)
+                        mutableFlags.remove(EntityFlag.CAN_FLY)
+                        mutableFlags.remove(EntityFlag.GLIDING) // Убираем и глайдинг
+                        mutableFlags.remove(EntityFlag.WASD_AIR_CONTROLLED)
+                        packet.metadata.put(EntityDataTypes.FLAGS, mutableFlags)
+                        modified = true
+                    }
                 }
-
-                val inputData = packet.inputData
-
-                // ** Расчет вертикального движения на основе ввода клиента **
-                // Мы используем флаги JUMPING/SNEAKING как ввод для вертикали, т.к. клиент сам не делает это при MAY_FLY
-                var verticalMovementDelta = 0f
-                if (inputData.contains(PlayerAuthInputData.JUMPING)) {
-                    verticalMovementDelta += flySpeed
+                // Обрабатываем FLAGS_2
+                packet.metadata.get(EntityDataTypes.FLAGS_2)?.let { flags2 ->
+                     if (flags2.contains(EntityFlag.CAN_FLY) || flags2.contains(EntityFlag.GLIDING) || flags2.contains(EntityFlag.WASD_AIR_CONTROLLED)) {
+                        val mutableFlags2 = EnumSet.copyOf(flags2)
+                        mutableFlags2.remove(EntityFlag.CAN_FLY)
+                        mutableFlags2.remove(EntityFlag.GLIDING) // Убираем и глайдинг
+                        mutableFlags2.remove(EntityFlag.WASD_AIR_CONTROLLED)
+                        packet.metadata.put(EntityDataTypes.FLAGS_2, mutableFlags2)
+                        modified = true
+                    }
                 }
-                if (inputData.contains(PlayerAuthInputData.SNEAKING)) {
-                    verticalMovementDelta -= flySpeed
-                }
-
-                // ** Расчет горизонтального движения **
-                // Используем дельту клиента для горизонтальных координат. Предполагаем, что клиент корректно рассчитывает горизонтальное движение.
-                val horizontalDelta = Vector3f.from(packet.delta.x, 0f, packet.delta.z)
-
-                // ** Расчет НОВОЙ позиции и дельты для отправки на сервер **
-                // Новая позиция = Последняя позиция, которую мы ОТПРАВИЛИ + Горизонтальная дельта клиента + Наша вертикальная дельта
-                val newPosition = lastPositionSentToServer!! // lastPositionSentToServer уже инициализирован
-                    .add(horizontalDelta) // Добавляем горизонтальное движение клиента
-                    .add(0f, verticalMovementDelta, 0f) // Добавляем наше вертикальное движение
-
-                // Новая дельта = Новая позиция - Последняя позиция, которую мы ОТПРАВИЛИ
-                val newDelta = newPosition.sub(lastPositionSentToServer!!)
-
-                // ** ОБНОВЛЯЕМ пакет **
-                packet.position = newPosition // Заменяем клиентскую позицию на нашу рассчитанную
-                packet.delta = newDelta     // Заменяем клиентскую дельту на нашу рассчитанную
-
-                // ** ОБНОВЛЯЕМ нашу отслеживаемую позицию для следующего тика **
-                lastPositionSentToServer = newPosition
-
-                // ** Удаляем флаги, которые явно выдают клиентский полет или его стандартные контроли **
-                // Мы удаляем их, потому что МЫ сами контролируем позицию, а не клиентская логика полета.
-                inputData.remove(PlayerAuthInputData.START_FLYING) // Клиент сообщает, что начал лететь
-                inputData.remove(PlayerAuthInputData.STOP_FLYING) // Клиент сообщает, что перестал лететь
-                inputData.remove(PlayerAuthInputData.ASCEND) // Используется для вертикального движения
-                inputData.remove(PlayerAuthInputData.DESCEND) // Используется для вертикального движения
-                inputData.remove(PlayerAuthInputData.CHANGE_HEIGHT) // Используется для вертикального движения/плавания
-                inputData.remove(PlayerAuthInputData.JUMPING) // Удаляем, т.к. мы использовали этот флаг для расчета подъема
-                inputData.remove(PlayerAuthInputData.SNEAKING) // Удаляем, т.к. мы использовали этот флаг для расчета спуска
-
-                // Модифицированный пакет продолжит свой путь к серверу с нашей фейковой позицией/дельтой
+                // if (modified) logger.trace("Removed flying/gliding flags from outgoing SetEntityDataPacket") // Комментарий для лога убран
             }
-            // Если модуль выключен, PlayerAuthInputPacket обрабатывается нормально.
         }
+
+        // Обрабатываем PlayerAuthInputPacket: Симулируем движение локально, убираем сигналы серверу
+        if (packet is PlayerAuthInputPacket) {
+            sendEnablePacketIfNeeded() // Убедимся, что клиент "думает", что может летать
+
+            // --- Расчет и симуляция движения ЛОКАЛЬНО ---
+            var verticalMotion = 0f
+            if (packet.inputData.contains(PlayerAuthInputData.JUMPING)) {
+                verticalMotion = flySpeed
+            } else if (packet.inputData.contains(PlayerAuthInputData.SNEAKING)) {
+                verticalMotion = -flySpeed
+            }
+
+            val inputVec: Vector2f = packet.analogMoveVector ?: packet.rawMoveVector ?: Vector2f.ZERO
+            val yawRad = Math.toRadians(packet.rotation.y.toDouble()).toFloat()
+            val motionX = (inputVec.x * cos(yawRad) - inputVec.y * sin(yawRad)) * flySpeed
+            val motionZ = (inputVec.x * sin(yawRad) + inputVec.y * cos(yawRad)) * flySpeed
+
+            val simulatedVelocity = Vector3f.from(motionX, verticalMotion, motionZ)
+
+            // Отправляем SetEntityMotionPacket КЛИЕНТУ для локального движения
+            if (simulatedVelocity.lengthSquared() > 1e-9f && session.isReady) {
+                val motionPacket = SetEntityMotionPacket().apply {
+                    runtimeEntityId = session.localPlayer.runtimeEntityId
+                    motion = simulatedVelocity
+                }
+                session.clientBound(motionPacket)
+            }
+
+            // --- Модификация ИСХОДЯЩЕГО пакета (только сигналы) ---
+            packet.inputData.remove(PlayerAuthInputData.START_FLYING)
+            packet.inputData.remove(PlayerAuthInputData.STOP_FLYING)
+            // if (flagsModified) logger.trace("Removed START/STOP_FLYING flags") // Комментарий для лога убран
+
+            // НЕ МЕНЯЕМ position/delta, НЕ УДАЛЯЕМ JUMPING/SNEAKING
+        }
+
+        // Модифицируем MovePlayerPacket: Устанавливаем onGround = false
+        if (packet is MovePlayerPacket) {
+            if (packet.isOnGround) {
+                 packet.onGround = false
+                 // logger.trace("Set onGround=false in outgoing MovePlayerPacket") // Комментарий для лога убран
+            }
+            // НЕ МЕНЯЕМ position
+        }
+
+        return PacketSignal.CONTINUE // Пропускаем пакет на сервер
+    }
+
+    // --- Вспомогательные функции и управление состоянием ---
+
+    private fun sendEnablePacketIfNeeded() {
+        if (!isFlyingLocally && isEnabled && session.isReady) {
+            enableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.runtimeEntityId
+            enableFlyAbilitiesPacket.abilityLayers[0].flySpeed = this.flySpeed
+            session.clientBound(enableFlyAbilitiesPacket)
+            isFlyingLocally = true
+            // logger.debug("Sent fake 'Enable Fly' abilities to client") // Комментарий для лога убран
+        }
+    }
+
+    private fun sendDisablePacketIfNeeded() {
+         if (isFlyingLocally && session.isReady) {
+             disableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.runtimeEntityId
+             session.clientBound(disableFlyAbilitiesPacket)
+             isFlyingLocally = false
+             // logger.debug("Sent fake 'Disable Fly' abilities to client") // Комментарий для лога убран
+         }
+    }
+
+    override fun onEnable() {
+        super.onEnable()
+        // logger.info("Fly module enabled") // Комментарий для лога убран
+    }
+
+    override fun onDisable() {
+        super.onDisable()
+        sendDisablePacketIfNeeded()
+        // logger.info("Fly module disabled") // Комментарий для лога убран
+    }
+
+    override fun onDisconnect() {
+        super.onDisconnect()
+        isFlyingLocally = false
     }
 }

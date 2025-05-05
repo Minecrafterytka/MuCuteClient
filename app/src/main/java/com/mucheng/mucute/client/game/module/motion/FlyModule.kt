@@ -1,31 +1,49 @@
+// Package declaration
 package com.mucheng.mucute.client.game.module.motion
 
+// MuCuteClient Imports
 import com.mucheng.mucute.client.game.InterceptablePacket
 import com.mucheng.mucute.client.game.Module
 import com.mucheng.mucute.client.game.ModuleCategory
+
+// CloudburstMC Protocol Bedrock Imports (Packet Types)
+import org.cloudburstmc.protocol.bedrock.packet.UpdateAbilitiesPacket
+import org.cloudburstmc.protocol.bedrock.packet.RequestAbilityPacket
+import org.cloudburstmc.protocol.bedrock.packet.PlayerAuthInputPacket
+import org.cloudburstmc.protocol.bedrock.packet.SetEntityMotionPacket
+import org.cloudburstmc.protocol.bedrock.packet.SetEntityDataPacket // Required for SetEntityDataPacket handling
+
+// CloudburstMC Protocol Bedrock Data Imports
 import org.cloudburstmc.protocol.bedrock.data.Ability
 import org.cloudburstmc.protocol.bedrock.data.AbilityLayer
 import org.cloudburstmc.protocol.bedrock.data.PlayerPermission
 import org.cloudburstmc.protocol.bedrock.data.PlayerAuthInputData
 import org.cloudburstmc.protocol.bedrock.data.command.CommandPermission
-import org.cloudburstmc.protocol.bedrock.packet.*
-import org.cloudburstmc.math.vector.Vector3f
-import org.cloudburstmc.protocol.bedrock.data.entity.EntityDataTypes // Необходим для EntityDataTypes.FLAGS
-import org.cloudburstmc.protocol.bedrock.data.entity.EntityFlag // Необходим для EntityFlag.CAN_FLY
-import java.util.EnumSet
+
+// CloudburstMC Protocol Bedrock Entity Data Imports
+import org.cloudburstmc.protocol.bedrock.data.entity.EntityDataTypes // Required for EntityDataTypes.FLAGS
+import org.cloudburstmc.protocol.bedrock.data.entity.EntityFlag // Required for EntityFlag.CAN_FLY
+
+// CloudburstMC Math Imports
+import org.cloudburstmc.math.vector.Vector3f // Required for Vector3f
+
+// Java Utility Imports
+import java.util.EnumSet // Required for EnumSet
+
+// --- Class Definition ---
 
 class FlyModule : Module("fly", ModuleCategory.Motion) {
     private var flySpeed by floatValue("flySpeed", 0.15f, 0.1f..1.5f)
 
-    // Пакеты с обновлением способностей (включая флаги полета)
+    // Полный набор способностей для мини-игр
     private val enableFlyAbilitiesPacket = UpdateAbilitiesPacket().apply {
         playerPermission = PlayerPermission.OPERATOR
         commandPermission = CommandPermission.OWNER
         abilityLayers.add(AbilityLayer().apply {
             layerType = AbilityLayer.Type.BASE
-            abilitiesSet.addAll(Ability.entries.toTypedArray()) // Все способности определены
+            abilitiesSet.addAll(Ability.entries.toTypedArray())
             abilityValues.addAll(
-                listOf( // Включаем более полный набор стандартных способностей + полет
+                listOf(
                     Ability.BUILD,
                     Ability.MINE,
                     Ability.DOORS_AND_SWITCHES,
@@ -33,7 +51,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     Ability.ATTACK_PLAYERS,
                     Ability.ATTACK_MOBS,
                     Ability.OPERATOR_COMMANDS,
-                    Ability.MAY_FLY, // Включаем полет
+                    Ability.MAY_FLY,
                     Ability.FLY_SPEED,
                     Ability.WALK_SPEED
                 )
@@ -48,9 +66,9 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
         commandPermission = CommandPermission.OWNER
         abilityLayers.add(AbilityLayer().apply {
             layerType = AbilityLayer.Type.BASE
-            abilitiesSet.addAll(Ability.entries.toTypedArray()) // Все способности определены
+            abilitiesSet.addAll(Ability.entries.toTypedArray())
             abilityValues.addAll(
-                listOf( // Включаем более полный набор стандартных способностей (без полета)
+                listOf(
                     Ability.BUILD,
                     Ability.MINE,
                     Ability.DOORS_AND_SWITCHES,
@@ -58,104 +76,86 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     Ability.ATTACK_PLAYERS,
                     Ability.ATTACK_MOBS,
                     Ability.OPERATOR_COMMANDS,
-                    // Ability.MAY_FLY, // Удален из abilityValues
-                    Ability.FLY_SPEED, // Оставляем, т.к. может использоваться для чего-то еще
+                    Ability.FLY_SPEED,
                     Ability.WALK_SPEED
                 )
             )
             walkSpeed = 0.1f
-             // flySpeed здесь не устанавливаем
         })
     }
 
-    private var canFly = false // Флаг состояния полета модуля
+    private var canFly = false
 
     override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
         val packet = interceptablePacket.packet
 
-        // 1. Блокируем входящие RequestAbilityPacket (от сервера)
+        // Блокируем запросы на активацию полета
         if (packet is RequestAbilityPacket && packet.ability == Ability.FLYING) {
-            interceptablePacket.intercept() // Блокируем запрос от сервера
+            interceptablePacket.intercept()
             return
         }
 
-        // 2. Блокируем входящие UpdateAbilitiesPacket (от сервера)
+        // Блокируем обновление способностей от клиента
         if (packet is UpdateAbilitiesPacket) {
-            interceptablePacket.intercept() // Блокируем обновление способностей от сервера
+            interceptablePacket.intercept()
             return
         }
 
-        // 3. Обработка исходящего PlayerAuthInputPacket (от клиента к серверу)
+        // Обработка ввода
         if (packet is PlayerAuthInputPacket) {
-
-            // 5. Активация/деактивация способностей полета у клиента (выполняется ДО обработки ввода для полета)
+            // Переключаем способности полета
             if (!canFly && isEnabled) {
                 enableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
-                session.clientBound(enableFlyAbilitiesPacket) // Отправляем клиенту
+                session.clientBound(enableFlyAbilitiesPacket)
                 canFly = true
-                 // log.debug("Fly module enabled. Sent enable abilities packet to client.") // Убран лог
             } else if (canFly && !isEnabled) {
                 disableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
-                session.clientBound(disableFlyAbilitiesPacket) // Отправляем клиенту
+                session.clientBound(disableFlyAbilitiesPacket)
                 canFly = false
-                 // log.debug("Fly module disabled. Sent disable abilities packet to client.") // Убран лог
-                // После выключения, пакет PlayerAuthInputPacket все равно должен пройти к серверу
+                return
             }
 
-            // Обработка, только если модуль включен
+            // Вертикальное движение без изменения флагов
             if (isEnabled) {
-                // 4. Чистим PlayerAuthInputPacket от флагов полета, но ОСТАВЛЯЕМ JUMPING/SNEAKING
-                val originalInputData = packet.inputData // Получаем исходный набор
-
-                val modifiedInputData = EnumSet.copyOf(originalInputData).apply {
-                    remove(PlayerAuthInputData.START_FLYING) // Скрываем явный старт полета
-                    remove(PlayerAuthInputData.STOP_FLYING)  // Скрываем явную остановку полета
-                    // УДАЛЕНЫ СТРОКИ: remove(PlayerAuthInputData.JUMPING) и remove(PlayerAuthInputData.SNEAKING)
-                    // Теперь эти флаги будут отправляться на сервер, если игрок их нажимает.
-                }
-
-                // Создаем клон пакета с чистыми данными и заменяем его для отправки на сервер
-                val modifiedPacket = packet.clone().apply {
-                    inputData.clear()
-                    inputData.addAll(modifiedInputData)
-                    // Здесь используется packet.motion.x/z (из оригинального пакета)
-                    // FIX: Убедитесь, что доступ к .x и .z осуществляется через свойства, а не методы .x()/.z()
-                    // Ваша последняя версия кода уже использовала свойства .x и .z
-                }
-                interceptablePacket.packet = modifiedPacket // Заменяем пакет в цепочке обработки на модифицированный
-
-                // 5. Управление вертикальным движением через SetEntityMotionPacket (для клиента)
-                // Используем ОРИГИНАЛЬНЫЕ inputData для определения ввода для вертикального движения
                 var verticalMotion = 0f
-                if (originalInputData.contains(PlayerAuthInputData.JUMPING)) { // Используем originalInputData
+                if (packet.inputData.contains(PlayerAuthInputData.JUMPING)) {
                     verticalMotion = flySpeed
-                } else if (originalInputData.contains(PlayerAuthInputData.SNEAKING)) { // Используем originalInputData
+                } else if (packet.inputData.contains(PlayerAuthInputData.SNEAKING)) {
                     verticalMotion = -flySpeed
                 }
 
                 if (verticalMotion != 0f) {
                     val motionPacket = SetEntityMotionPacket().apply {
                         runtimeEntityId = session.localPlayer.runtimeEntityId
-                         // ЭТО ПРИЧИНА ОБНУЛЕНИЯ ГОРИЗОНТАЛЬНОГО ДВИЖЕНИЯ:
-                         // Установка X и Z в 0f. Эта проблема остается.
-                        motion = Vector3f.from(0f, verticalMotion, 0f) // <-- Эта строка обнуляет горизонтальное движение
+                        // Эта строка обнуляет горизонтальное движение
+                        motion = Vector3f.from(0f, verticalMotion, 0f)
                     }
-                    session.clientBound(motionPacket) // Отправляем ТОЛЬКО клиенту
-                     // log.debug("Sent SetEntityMotionPacket clientBound with motion: ${motionPacket.motion}") // Убран лог
+                    session.clientBound(motionPacket)
                 }
             }
-             // Пакет PlayerAuthInputPacket (возможно модифицированный) отправляется дальше к серверу.
+
+            // Чистим флаги полета из PlayerAuthInputPacket
+            val modifiedInputData = EnumSet.copyOf(packet.inputData).apply {
+                remove(PlayerAuthInputData.START_FLYING)
+                remove(PlayerAuthInputData.STOP_FLYING)
+            }
+
+            val modifiedPacket = packet.clone().apply {
+                inputData.clear()
+                inputData.addAll(modifiedInputData)
+            }
+
+            interceptablePacket.packet = modifiedPacket
         }
 
-        // 6. Дополнительная проверка: скрытие флага CAN_FLY в метаданных (входящий от сервера)
+        // Скрываем флаг CAN_FLY в метаданных
         if (packet is SetEntityDataPacket) {
             val flags = packet.metadata.get(EntityDataTypes.FLAGS) ?: return
+            // FIX: Используем apply для создания и мутации копии
             val modifiedFlags = EnumSet.copyOf(flags).apply {
-                remove(EntityFlag.CAN_FLY) // Удаляем флаг CAN_FLY
+                remove(EntityFlag.CAN_FLY)
             }
-             packet.metadata.put(EntityDataTypes.FLAGS, modifiedFlags) // Записываем измененную копию
+            packet.metadata.put(EntityDataTypes.FLAGS, modifiedFlags)
         }
-        // Блоки обработки MovePlayerPacket и onValueChange отсутствуют.
     }
-    // Метод onValueChange отсутствует.
 }

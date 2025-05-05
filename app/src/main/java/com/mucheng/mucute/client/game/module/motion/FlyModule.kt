@@ -10,8 +10,9 @@ import org.cloudburstmc.protocol.bedrock.data.PlayerAuthInputData
 import org.cloudburstmc.protocol.bedrock.data.command.CommandPermission
 import org.cloudburstmc.protocol.bedrock.packet.*
 import org.cloudburstmc.math.vector.Vector3f
-import org.cloudburstmc.protocol.bedrock.data.entity.EntityDataTypes // ✅ Import added
-import org.cloudburstmc.protocol.bedrock.data.entity.EntityFlag     // ✅ Import added
+import org.cloudburstmc.protocol.bedrock.data.entity.EntityDataTypes
+import org.cloudburstmc.protocol.bedrock.data.entity.EntityFlag
+import java.util.EnumSet
 
 class FlyModule : Module("fly", ModuleCategory.Motion) {
     private var flySpeed by floatValue("flySpeed", 0.15f, 0.1f..1.5f)
@@ -80,9 +81,9 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
         }
 
         if (packet is PlayerAuthInputPacket) {
-            // ✅ Fix: Use `var` instead of `val` for reassignment
-            var currentMotionX = packet.motion.x()
-            var currentMotionZ = packet.motion.z() // ✅ Fix: Use method syntax
+            // Fix: Use direct properties instead of method syntax
+            var currentMotionX = packet.motion.x
+            var currentMotionZ = packet.motion.z
 
             if (!canFly && isEnabled) {
                 enableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
@@ -113,12 +114,11 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
             }
         }
 
-        // ✅ Fix: Use fully qualified names if imports are ambiguous
         if (packet is SetEntityDataPacket) {
             val flags = packet.metadata.get(EntityDataTypes.FLAGS) ?: return
-            val modifiedFlags = EnumSet.copyOf(flags).apply {
-                remove(EntityFlag.CAN_FLY)
-            }
+            // Fix: Explicit type for EnumSet
+            val modifiedFlags: EnumSet<EntityFlag> = EnumSet.copyOf(flags)
+            modifiedFlags.remove(EntityFlag.CAN_FLY)
             packet.metadata.put(EntityDataTypes.FLAGS, modifiedFlags)
         }
     }

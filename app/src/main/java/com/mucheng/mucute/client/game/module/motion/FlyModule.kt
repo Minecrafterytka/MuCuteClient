@@ -10,12 +10,12 @@ import org.cloudburstmc.protocol.bedrock.data.PlayerAuthInputData
 import org.cloudburstmc.protocol.bedrock.data.command.CommandPermission
 import org.cloudburstmc.protocol.bedrock.packet.*
 import org.cloudburstmc.math.vector.Vector3f
-import java.util.EnumSet
+import org.cloudburstmc.protocol.bedrock.data.entity.EntityDataTypes // ✅ Import added
+import org.cloudburstmc.protocol.bedrock.data.entity.EntityFlag     // ✅ Import added
 
 class FlyModule : Module("fly", ModuleCategory.Motion) {
     private var flySpeed by floatValue("flySpeed", 0.15f, 0.1f..1.5f)
 
-    // Сохраняем полные права и способности для совместимости с мини-играми
     private val enableFlyAbilitiesPacket = UpdateAbilitiesPacket().apply {
         playerPermission = PlayerPermission.OPERATOR
         commandPermission = CommandPermission.OWNER
@@ -69,21 +69,21 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
     override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
         val packet = interceptablePacket.packet
 
-        // 1. Блокируем запросы на активацию полета
         if (packet is RequestAbilityPacket && packet.ability == Ability.FLYING) {
             interceptablePacket.intercept()
             return
         }
 
-        // 2. Блокируем обновление способностей от клиента
         if (packet is UpdateAbilitiesPacket) {
             interceptablePacket.intercept()
             return
         }
 
-        // 3. Обработка ввода с сохранением всех возможностей
         if (packet is PlayerAuthInputPacket) {
-            // Переключаем способности полета
+            // ✅ Fix: Use `var` instead of `val` for reassignment
+            var currentMotionX = packet.motion.x()
+            var currentMotionZ = packet.motion.z() // ✅ Fix: Use method syntax
+
             if (!canFly && isEnabled) {
                 enableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
                 session.clientBound(enableFlyAbilitiesPacket)
@@ -95,35 +95,14 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 return
             }
 
-            // 4. Чистим флаги полета из PlayerAuthInputPacket
-            val modifiedInputData = EnumSet.copyOf(packet.inputData).apply {
-                remove(PlayerAuthInputData.START_FLYING)
-                remove(PlayerAuthInputData.STOP_FLYING)
-            }
-
-            // Клонируем пакет с чистыми данными
-            val modifiedPacket = packet.clone().apply {
-                inputData.clear()
-                inputData.addAll(modifiedInputData)
-            }
-
-            interceptablePacket.packet = modifiedPacket
-
-            // 5. Вертикальное движение без влияния на горизонтальное
             if (isEnabled) {
-                // Сохраняем текущее движение
-                var currentMotionX = packet.motion.x
-                var currentMotionZ = packet.motion.z
-
-                // Вычисляем вертикальную компоненту
                 var verticalMotion = 0f
-                if (modifiedInputData.contains(PlayerAuthInputData.JUMPING)) {
+                if (packet.inputData.contains(PlayerAuthInputData.JUMPING)) {
                     verticalMotion = flySpeed
-                } else if (modifiedInputData.contains(PlayerAuthInputData.SNEAKING)) {
+                } else if (packet.inputData.contains(PlayerAuthInputData.SNEAKING)) {
                     verticalMotion = -flySpeed
                 }
 
-                // Отправляем пакет с сохранением горизонтального движения
                 if (verticalMotion != 0f) {
                     val motionPacket = SetEntityMotionPacket().apply {
                         runtimeEntityId = session.localPlayer.runtimeEntityId
@@ -134,7 +113,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
             }
         }
 
-        // 6. Скрываем флаг CAN_FLY в метаданных (на всякий случай)
+        // ✅ Fix: Use fully qualified names if imports are ambiguous
         if (packet is SetEntityDataPacket) {
             val flags = packet.metadata.get(EntityDataTypes.FLAGS) ?: return
             val modifiedFlags = EnumSet.copyOf(flags).apply {

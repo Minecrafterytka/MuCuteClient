@@ -20,8 +20,9 @@ import kotlin.math.PI
 
 class FlyModule : Module("fly", ModuleCategory.Motion) {
 
-    private var flySpeed by floatValue("flySpeed", 0.2f, 0.05f..1.0f) // Уменьшена базовая скорость
-    private var canFly = false
+    private var flySpeed by floatValue("flySpeed", 0.2f, 0.05f..1.0f) // Базовая скорость (настроить для креатива)
+    private var isFlying = false // Флаг активного полета
+    private var lastMotion = Vector3f.ZERO // Для сглаживания движения
 
     // Собственная функция для преобразования градусов в радианы
     private fun toRadians(degrees: Double): Double = degrees * (PI / 180.0)
@@ -52,7 +53,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
         })
     }
 
-    // Пакет для отключения полета
+    // Пакет для полного отключения полета
     private val disableFlyAbilitiesPacket = UpdateAbilitiesPacket().apply {
         playerPermission = PlayerPermission.OPERATOR
         commandPermission = CommandPermission.OWNER
@@ -72,6 +73,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 )
             )
             walkSpeed = 0.1f
+            flySpeed = 0.0f // Явно сбрасываем скорость полета
         })
     }
 
@@ -86,31 +88,55 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
 
         // Обрабатываем ввод игрока
         if (packet is PlayerAuthInputPacket) {
-            // Включаем полет локально
-            if (!canFly && isEnabled) {
-                enableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
-                session.clientBound(enableFlyAbilitiesPacket)
-                canFly = true
-            } else if (canFly && !isEnabled) {
-                disableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
-                session.clientBound(disableFlyAbilitiesPacket)
-                canFly = false
-            }
-
+            // Перехватываем START_FLYING и STOP_FLYING
             if (isEnabled) {
-                // Перехватываем пакеты с флагами полета
-                if (packet.inputData.contains(PlayerAuthInputData.START_FLYING) ||
-                    packet.inputData.contains(PlayerAuthInputData.STOP_FLYING)) {
-                    interceptablePacket.intercept() // Отменяем отправку пакета
+                if (packet.inputData.contains(PlayerAuthInputData.START_FLYING)) {
+                    interceptablePacket.intercept() // Перехватываем пакет
+                    if (!isFlying) {
+                        enableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
+                        session.clientBound(enableFlyAbilitiesPacket)
+                        isFlying = true
+                    }
+                    return
+                } else if (packet.inputData.contains(PlayerAuthInputData.STOP_FLYING)) {
+                    interceptablePacket.intercept() // Перехватываем пакет
+                    if (isFlying) {
+                        disableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
+                        session.clientBound(disableFlyAbilitiesPacket)
+                        // Сбрасываем движение
+                        val stopMotionPacket = SetEntityMotionPacket().apply {
+                            runtimeEntityId = session.localPlayer.runtimeEntityId
+                            motion = Vector3f.from(0f, -0.08f, 0f) // Гравитация
+                        }
+                        session.clientBound(stopMotionPacket)
+                        isFlying = false
+                        lastMotion = Vector3f.ZERO
+                    }
                     return
                 }
+            }
 
+            // Отключаем способности, если модуль выключен
+            if (!isEnabled && isFlying) {
+                disableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
+                session.clientBound(disableFlyAbilitiesPacket)
+                val stopMotionPacket = SetEntityMotionPacket().apply {
+                    runtimeEntityId = session.localPlayer.runtimeEntityId
+                    motion = Vector3f.from(0f, -0.08f, 0f) // Гравитация
+                }
+                session.clientBound(stopMotionPacket)
+                isFlying = false
+                lastMotion = Vector3f.ZERO
+            }
+
+            // Обрабатываем движение только при активном полете
+            if (isEnabled && isFlying) {
                 // Управляем движением локально
                 var verticalMotion = 0f
                 if (packet.inputData.contains(PlayerAuthInputData.JUMPING)) {
-                    verticalMotion = flySpeed * 1.2f // Уменьшен множитель для вертикального движения
+                    verticalMotion = flySpeed * 1.3f // Для креативного подъема
                 } else if (packet.inputData.contains(PlayerAuthInputData.SNEAKING)) {
-                    verticalMotion = -flySpeed * 1.2f // Уменьшен множитель для спуска
+                    verticalMotion = -flySpeed * 1.3f // Для спуска
                 }
 
                 // Получаем горизонтальное движение из packet.motion
@@ -122,15 +148,17 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 val yaw = packet.rotation?.y?.toDouble()?.let { toRadians(it) } ?: 0.0
                 // Преобразуем движение в направлении взгляда
                 val horizontalMotion = if (inputMotion != Vector3f.ZERO) {
-                    val speed = flySpeed.toDouble() // Преобразуем speed в Double
+                    val speed = flySpeed.toDouble() * 0.8 // Уменьшен множитель для плавности
                     // Вращаем вектор движения в соответствии с yaw
-                    Vector3f.from(
+                    val newMotion = Vector3f.from(
                         ((-sin(yaw) * inputMotion.z.toDouble() + cos(yaw) * inputMotion.x.toDouble()) * speed).toFloat(),
                         0f,
                         ((cos(yaw) * inputMotion.z.toDouble() + sin(yaw) * inputMotion.x.toDouble()) * speed).toFloat()
                     )
+                    // Сглаживание: комбинируем новое движение с предыдущим
+                    lastMotion.lerp(newMotion, 0.5f)
                 } else {
-                    Vector3f.ZERO
+                    lastMotion.lerp(Vector3f.ZERO, 0.5f) // Плавное затухание
                 }
 
                 // Комбинируем горизонтальное и вертикальное движение
@@ -140,14 +168,13 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     horizontalMotion.z
                 )
 
-                // Отправляем SetEntityMotionPacket только если есть движение
-                if (combinedMotion != Vector3f.ZERO) {
-                    val motionPacket = SetEntityMotionPacket().apply {
-                        runtimeEntityId = session.localPlayer.runtimeEntityId
-                        motion = combinedMotion
-                    }
-                    session.clientBound(motionPacket)
+                // Отправляем SetEntityMotionPacket
+                val motionPacket = SetEntityMotionPacket().apply {
+                    runtimeEntityId = session.localPlayer.runtimeEntityId
+                    motion = combinedMotion
                 }
+                session.clientBound(motionPacket)
+                lastMotion = horizontalMotion // Обновляем последнее движение
 
                 // Синхронизируем позицию с сервером через MovePlayerPacket
                 val playerPosition = packet.position?.let { Vector3f.from(it.x, it.y, it.z) } ?: Vector3f.ZERO
@@ -161,6 +188,28 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                         tick = packet.tick
                     }
                     session.serverBound(movePacket) // Отправляем на сервер
+                }
+            } else if (isEnabled) {
+                // При включенном модуле, но без полета, применяем гравитацию
+                val motionPacket = SetEntityMotionPacket().apply {
+                    runtimeEntityId = session.localPlayer.runtimeEntityId
+                    motion = Vector3f.from(0f, -0.08f, 0f) // Только гравитация
+                }
+                session.clientBound(motionPacket)
+                lastMotion = Vector3f.ZERO
+
+                // Синхронизируем позицию
+                val playerPosition = packet.position?.let { Vector3f.from(it.x, it.y, it.z) } ?: Vector3f.ZERO
+                if (playerPosition != Vector3f.ZERO) {
+                    val movePacket = MovePlayerPacket().apply {
+                        runtimeEntityId = session.localPlayer.runtimeEntityId
+                        position = playerPosition
+                        rotation = packet.rotation?.let { Vector3f.from(it.x, it.y, it.z) } ?: Vector3f.ZERO
+                        mode = MovePlayerPacket.Mode.NORMAL
+                        setOnGround(false) // Игрок падает
+                        tick = packet.tick
+                    }
+                    session.serverBound(movePacket)
                 }
             }
         }

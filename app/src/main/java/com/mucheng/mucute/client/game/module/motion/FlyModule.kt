@@ -16,12 +16,15 @@ import org.cloudburstmc.math.vector.Vector3f
 import org.cloudburstmc.protocol.bedrock.data.PlayerAuthInputData
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.math.toRadians // Добавлен импорт
+import kotlin.math.PI
 
 class FlyModule : Module("fly", ModuleCategory.Motion) {
 
     private var flySpeed by floatValue("flySpeed", 0.2f, 0.05f..1.0f) // Уменьшена базовая скорость
     private var canFly = false
+
+    // Собственная функция для преобразования градусов в радианы
+    private fun toRadians(degrees: Double): Double = degrees * (PI / 180.0)
 
     // Пакет для включения полета локально
     private val enableFlyAbilitiesPacket = UpdateAbilitiesPacket().apply {
@@ -116,7 +119,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 } ?: Vector3f.ZERO
 
                 // Получаем угол поворота (yaw) из rotation
-                val yaw = packet.rotation?.y?.toDouble()?.toRadians() ?: 0.0 // Преобразуем Float в Double
+                val yaw = packet.rotation?.y?.toDouble()?.let { toRadians(it) } ?: 0.0
                 // Преобразуем движение в направлении взгляда
                 val horizontalMotion = if (inputMotion != Vector3f.ZERO) {
                     val speed = flySpeed * 1.0f // Уменьшен множитель для горизонтального движения

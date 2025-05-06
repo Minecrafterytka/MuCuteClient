@@ -91,9 +91,13 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
             }
 
             if (isEnabled) {
+                // Создаем мутабельную копию inputData
+                val modifiedInputData = packet.inputData.toMutableSet()
                 // Удаляем флаги полета
-                packet.inputData.remove(PlayerAuthInputData.START_FLYING)
-                packet.inputData.remove(PlayerAuthInputData.STOP_FLYING)
+                modifiedInputData.remove(PlayerAuthInputData.START_FLYING)
+                modifiedInputData.remove(PlayerAuthInputData.STOP_FLYING)
+                // Заменяем оригинальное множество
+                packet.inputData = modifiedInputData
 
                 // Управляем движением локально
                 var verticalMotion = 0f
@@ -110,9 +114,6 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     }
                     session.clientBound(motionPacket)
                 }
-
-                // Имитируем состояние "на земле" для сервера
-                packet.inputData.add(PlayerAuthInputData.ON_GROUND)
             }
         }
     }

@@ -120,9 +120,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 }
 
                 // Получаем горизонтальное движение
-                val inputMotion = packet.analogMoveVector?.let {
-                    Vector3f.from(it.getX(), 0f, it.getY())
-                } ?: packet.motion?.let {
+                val inputMotion = packet.motion?.let {
                     Vector3f.from(it.getX(), 0f, it.getY())
                 } ?: Vector3f.ZERO
 
@@ -147,8 +145,8 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     horizontalMotion.getZ()
                 )
 
-                // Отправляем SetEntityMotionPacket только при изменении движения
-                if (combinedMotion != Vector3f.ZERO || verticalMotion != 0f) {
+                // Отправляем SetEntityMotionPacket только для полета или падения
+                if (isFlying || verticalMotion != 0f) {
                     val motionPacket = SetEntityMotionPacket().apply {
                         runtimeEntityId = session.localPlayer.runtimeEntityId
                         motion = combinedMotion
@@ -164,7 +162,6 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                         position = playerPosition
                         rotation = packet.rotation?.let { Vector3f.from(it.getX(), it.getY(), it.getZ()) } ?: Vector3f.ZERO
                         mode = MovePlayerPacket.Mode.NORMAL
-                        setOnGround(false) // Всегда в воздухе, так как MAY_FLY активен
                         tick = packet.tick
                     }
                     session.serverBound(movePacket)

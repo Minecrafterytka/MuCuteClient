@@ -14,6 +14,7 @@ import org.cloudburstmc.protocol.bedrock.packet.UpdateAbilitiesPacket
 import org.cloudburstmc.math.vector.Vector2f
 import org.cloudburstmc.math.vector.Vector3f
 import org.cloudburstmc.protocol.bedrock.data.PlayerAuthInputData
+import java.util.EnumSet
 
 class FlyModule : Module("fly", ModuleCategory.Motion) {
 
@@ -93,7 +94,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
 
             if (isEnabled) {
                 // Создаем мутабельную копию inputData
-                val modifiedInputData = packet.inputData.toMutableSet()
+                val modifiedInputData = EnumSet.copyOf(packet.inputData)
                 // Удаляем флаги полета
                 modifiedInputData.remove(PlayerAuthInputData.START_FLYING)
                 modifiedInputData.remove(PlayerAuthInputData.STOP_FLYING)
@@ -104,7 +105,6 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 newPacket.rotation = packet.rotation?.let { Vector3f.from(it.x, it.y, it.z) } ?: Vector3f.ZERO
                 newPacket.position = packet.position?.let { Vector3f.from(it.x, it.y, it.z) } ?: Vector3f.ZERO
                 newPacket.motion = packet.motion?.let { Vector2f.from(it.x, it.y) } ?: Vector2f.ZERO
-                newPacket.inputData.addAll(modifiedInputData) // Добавляем измененные данные
                 newPacket.inputMode = packet.inputMode
                 newPacket.playMode = packet.playMode
                 newPacket.tick = packet.tick
@@ -121,6 +121,17 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 newPacket.vehicleRotation = packet.vehicleRotation
                 newPacket.cameraOrientation = packet.cameraOrientation
                 newPacket.rawMoveVector = packet.rawMoveVector
+
+                // Проверяем, есть ли способ установить inputData
+                try {
+                    // Предполагаем, что inputData можно установить через прямое присваивание
+                    newPacket.inputData = modifiedInputData
+                } catch (e: IllegalAccessException) {
+                    // Если прямое присваивание невозможно, используем рефлексию (как временное решение)
+                    val field = PlayerAuthInputPacket::class.java.getDeclaredField("inputData")
+                    field.isAccessible = true
+                    field.set(newPacket, modifiedInputData)
+                }
 
                 // Заменяем старый пакет новым
                 interceptablePacket.packet = newPacket

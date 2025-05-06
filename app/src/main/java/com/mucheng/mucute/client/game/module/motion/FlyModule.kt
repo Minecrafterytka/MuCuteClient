@@ -96,8 +96,22 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 // Удаляем флаги полета
                 modifiedInputData.remove(PlayerAuthInputData.START_FLYING)
                 modifiedInputData.remove(PlayerAuthInputData.STOP_FLYING)
-                // Заменяем оригинальное множество
-                packet.inputData = modifiedInputData
+
+                // Создаем новый пакет с измененными данными
+                val newPacket = PlayerAuthInputPacket().apply {
+                    rotation = packet.rotation
+                    position = packet.position
+                    motion = packet.motion
+                    inputData = modifiedInputData
+                    inputMode = packet.inputMode
+                    playMode = packet.playMode
+                    tick = packet.tick
+                    delta = packet.delta
+                    // Если есть другие поля, добавьте их здесь
+                }
+
+                // Заменяем старый пакет новым
+                interceptablePacket.packet = newPacket
 
                 // Управляем движением локально
                 var verticalMotion = 0f

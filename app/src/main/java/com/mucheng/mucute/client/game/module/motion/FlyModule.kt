@@ -16,7 +16,7 @@ import org.cloudburstmc.math.vector.Vector3f
 import org.cloudburstmc.protocol.bedrock.data.PlayerAuthInputData
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.math.toRadians
+import kotlin.math.toRadians // Добавлен импорт
 
 class FlyModule : Module("fly", ModuleCategory.Motion) {
 
@@ -116,7 +116,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 } ?: Vector3f.ZERO
 
                 // Получаем угол поворота (yaw) из rotation
-                val yaw = packet.rotation?.y?.toRadians() ?: 0.0
+                val yaw = packet.rotation?.y?.toDouble()?.toRadians() ?: 0.0 // Преобразуем Float в Double
                 // Преобразуем движение в направлении взгляда
                 val horizontalMotion = if (inputMotion != Vector3f.ZERO) {
                     val speed = flySpeed * 1.0f // Уменьшен множитель для горизонтального движения

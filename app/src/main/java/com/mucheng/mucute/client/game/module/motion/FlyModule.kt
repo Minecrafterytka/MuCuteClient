@@ -11,6 +11,7 @@ import org.cloudburstmc.protocol.bedrock.packet.PlayerAuthInputPacket
 import org.cloudburstmc.protocol.bedrock.packet.RequestAbilityPacket
 import org.cloudburstmc.protocol.bedrock.packet.SetEntityMotionPacket
 import org.cloudburstmc.protocol.bedrock.packet.UpdateAbilitiesPacket
+import org.cloudburstmc.math.vector.Vector2f
 import org.cloudburstmc.math.vector.Vector3f
 import org.cloudburstmc.protocol.bedrock.data.PlayerAuthInputData
 
@@ -97,18 +98,29 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 modifiedInputData.remove(PlayerAuthInputData.START_FLYING)
                 modifiedInputData.remove(PlayerAuthInputData.STOP_FLYING)
 
-                // Создаем новый пакет с измененными данными
-                val newPacket = PlayerAuthInputPacket().apply {
-                    rotation = packet.rotation
-                    position = packet.position
-                    motion = packet.motion
-                    inputData = modifiedInputData
-                    inputMode = packet.inputMode
-                    playMode = packet.playMode
-                    tick = packet.tick
-                    delta = packet.delta
-                    // Если есть другие поля, добавьте их здесь
-                }
+                // Создаем новый пакет
+                val newPacket = PlayerAuthInputPacket()
+                // Копируем данные из оригинального пакета
+                newPacket.rotation = packet.rotation?.let { Vector3f.from(it.x, it.y, it.z) } ?: Vector3f.ZERO
+                newPacket.position = packet.position?.let { Vector3f.from(it.x, it.y, it.z) } ?: Vector3f.ZERO
+                newPacket.motion = packet.motion?.let { Vector2f.from(it.x, it.y) } ?: Vector2f.ZERO
+                newPacket.inputData.addAll(modifiedInputData) // Добавляем измененные данные
+                newPacket.inputMode = packet.inputMode
+                newPacket.playMode = packet.playMode
+                newPacket.tick = packet.tick
+                newPacket.delta = packet.delta?.let { Vector3f.from(it.x, it.y, it.z) } ?: Vector3f.ZERO
+                // Дополнительные поля
+                newPacket.vrGazeDirection = packet.vrGazeDirection
+                newPacket.itemUseTransaction = packet.itemUseTransaction
+                newPacket.itemStackRequest = packet.itemStackRequest
+                newPacket.playerActions.addAll(packet.playerActions)
+                newPacket.inputInteractionModel = packet.inputInteractionModel
+                newPacket.interactRotation = packet.interactRotation
+                newPacket.analogMoveVector = packet.analogMoveVector
+                newPacket.predictedVehicle = packet.predictedVehicle
+                newPacket.vehicleRotation = packet.vehicleRotation
+                newPacket.cameraOrientation = packet.cameraOrientation
+                newPacket.rawMoveVector = packet.rawMoveVector
 
                 // Заменяем старый пакет новым
                 interceptablePacket.packet = newPacket

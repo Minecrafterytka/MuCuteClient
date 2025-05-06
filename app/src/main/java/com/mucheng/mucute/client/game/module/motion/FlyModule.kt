@@ -10,7 +10,6 @@ import org.cloudburstmc.protocol.bedrock.data.command.CommandPermission
 import org.cloudburstmc.protocol.bedrock.packet.MovePlayerPacket
 import org.cloudburstmc.protocol.bedrock.packet.PlayerAuthInputPacket
 import org.cloudburstmc.protocol.bedrock.packet.RequestAbilityPacket
-import org.cloudburstmc.protocol.bedrock.packet.SetEntityMotionPacket
 import org.cloudburstmc.protocol.bedrock.packet.UpdateAbilitiesPacket
 import org.cloudburstmc.math.vector.Vector3f
 import org.cloudburstmc.protocol.bedrock.data.PlayerAuthInputData
@@ -64,7 +63,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     Ability.BUILD,
                     Ability.MINE,
                     Ability.DOORS_AND_SWITCHES,
-                    Ability.OPEN_CONTAINERS,
+                    OPEN_CONTAINERS,
                     Ability.ATTACK_PLAYERS,
                     Ability.ATTACK_MOBS,
                     Ability.OPERATOR_COMMANDS,
@@ -105,20 +104,6 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     interceptablePacket.intercept()
                 }
 
-                // Проверяем, активен ли полет
-                val isFlying = packet.inputData.contains(PlayerAuthInputData.JUMPING) ||
-                        packet.inputData.contains(PlayerAuthInputData.SNEAKING)
-
-                // Управляем движением
-                var verticalMotion = if (isFlying) 0f else -0.08f // Без гравитации в полете
-                if (isFlying) {
-                    if (packet.inputData.contains(PlayerAuthInputData.JUMPING)) {
-                        verticalMotion = flySpeed * 1.4f // Для подъема
-                    } else if (packet.inputData.contains(PlayerAuthInputData.SNEAKING)) {
-                        verticalMotion = -flySpeed * 1.4f // Для спуска
-                    }
-                }
-
                 // Получаем горизонтальное движение
                 val inputMotion = packet.motion?.let {
                     Vector3f.from(it.getX(), 0f, it.getY())
@@ -126,8 +111,8 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
 
                 // Получаем угол поворота (yaw)
                 val yaw = packet.rotation?.y?.toDouble()?.let { toRadians(it) } ?: 0.0
-                // Преобразуем движение в направлении взгляда только в полете
-                val horizontalMotion = if (inputMotion != Vector3f.ZERO && isFlying) {
+                // Преобразуем движение в направлении взгляда
+                val horizontalMotion = if (inputMotion != Vector3f.ZERO) {
                     val speed = flySpeed.toDouble() * 0.9 // Настроено для креатива
                     Vector3f.from(
                         ((-sin(yaw) * inputMotion.getZ().toDouble() + cos(yaw) * inputMotion.getX().toDouble()) * speed).toFloat(),
@@ -138,22 +123,6 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     Vector3f.ZERO
                 }
 
-                // Комбинируем движение
-                val combinedMotion = Vector3f.from(
-                    horizontalMotion.getX(),
-                    verticalMotion,
-                    horizontalMotion.getZ()
-                )
-
-                // Отправляем SetEntityMotionPacket только для полета или падения
-                if (isFlying || verticalMotion != 0f) {
-                    val motionPacket = SetEntityMotionPacket().apply {
-                        runtimeEntityId = session.localPlayer.runtimeEntityId
-                        motion = combinedMotion
-                    }
-                    session.clientBound(motionPacket)
-                }
-
                 // Синхронизируем позицию с сервером
                 val playerPosition = packet.position?.let { Vector3f.from(it.getX(), it.getY(), it.getZ()) } ?: Vector3f.ZERO
                 if (playerPosition != Vector3f.ZERO) {
@@ -161,7 +130,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                         runtimeEntityId = session.localPlayer.runtimeEntityId
                         position = playerPosition
                         rotation = packet.rotation?.let { Vector3f.from(it.getX(), it.getY(), it.getZ()) } ?: Vector3f.ZERO
-                        mode = MovePlayerPacket.Mode.NORMAL
+                        mode = MovePlayerPacket.Mode   // Assuming this is the enum that contains the possible modes
                         tick = packet.tick
                     }
                     session.serverBound(movePacket)

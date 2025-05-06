@@ -10,6 +10,7 @@ import org.cloudburstmc.protocol.bedrock.data.command.CommandPermission
 import org.cloudburstmc.protocol.bedrock.packet.MovePlayerPacket
 import org.cloudburstmc.protocol.bedrock.packet.PlayerAuthInputPacket
 import org.cloudburstmc.protocol.bedrock.packet.RequestAbilityPacket
+import org.cloudburstmc.protocol.bedrock.packet.SetEntityMotionPacket
 import org.cloudburstmc.protocol.bedrock.packet.UpdateAbilitiesPacket
 import org.cloudburstmc.math.vector.Vector3f
 import org.cloudburstmc.protocol.bedrock.data.PlayerAuthInputData
@@ -104,6 +105,14 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     interceptablePacket.intercept()
                 }
 
+                // Управляем вертикальным движением
+                var verticalMotion = 0f // Без гравитации по умолчанию
+                if (packet.inputData.contains(PlayerAuthInputData.JUMPING)) {
+                    verticalMotion = flySpeed * 1.4f // Взлет
+                } else if (packet.inputData.contains(PlayerAuthInputData.SNEAKING)) {
+                    verticalMotion = -flySpeed * 1.4f // Спуск
+                }
+
                 // Получаем горизонтальное движение
                 val inputMotion = packet.motion?.let {
                     Vector3f.from(it.getX(), 0f, it.getY())
@@ -121,6 +130,22 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     )
                 } else {
                     Vector3f.ZERO
+                }
+
+                // Комбинируем горизонтальное и вертикальное движение
+                val combinedMotion = Vector3f.from(
+                    horizontalMotion.getX(),
+                    verticalMotion,
+                    horizontalMotion.getZ()
+                )
+
+                // Отправляем движение клиенту
+                if (combinedMotion != Vector3f.ZERO || verticalMotion != 0f) {
+                    val motionPacket = SetEntityMotionPacket().apply {
+                        runtimeEntityId = session.localPlayer.runtimeEntityId
+                        motion = combinedMotion
+                    }
+                    session.clientBound(motionPacket)
                 }
 
                 // Синхронизируем позицию с сервером

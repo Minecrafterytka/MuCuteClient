@@ -122,12 +122,12 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 val yaw = packet.rotation?.y?.toDouble()?.let { toRadians(it) } ?: 0.0
                 // Преобразуем движение в направлении взгляда
                 val horizontalMotion = if (inputMotion != Vector3f.ZERO) {
-                    val speed = flySpeed * 1.0f // Уменьшен множитель для горизонтального движения
+                    val speed = flySpeed.toDouble() // Преобразуем speed в Double
                     // Вращаем вектор движения в соответствии с yaw
                     Vector3f.from(
-                        (-sin(yaw) * inputMotion.z + cos(yaw) * inputMotion.x) * speed,
+                        ((-sin(yaw) * inputMotion.z.toDouble() + cos(yaw) * inputMotion.x.toDouble()) * speed).toFloat(),
                         0f,
-                        (cos(yaw) * inputMotion.z + sin(yaw) * inputMotion.x) * speed
+                        ((cos(yaw) * inputMotion.z.toDouble() + sin(yaw) * inputMotion.x.toDouble()) * speed).toFloat()
                     )
                 } else {
                     Vector3f.ZERO

@@ -27,6 +27,16 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
     // Собственная функция для преобразования градусов в радианы
     private fun toRadians(degrees: Double): Double = degrees * (PI / 180.0)
 
+    // Собственная функция lerp для Vector3f
+    private fun Vector3f.lerp(other: Vector3f, t: Float): Vector3f {
+        val tInv = 1.0f - t
+        return Vector3f.from(
+            getX() * tInv + other.getX() * t,
+            getY() * tInv + other.getY() * t,
+            getZ() * tInv + other.getZ() * t
+        )
+    }
+
     // Пакет для включения полета локально
     private val enableFlyAbilitiesPacket = UpdateAbilitiesPacket().apply {
         playerPermission = PlayerPermission.OPERATOR
@@ -141,7 +151,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
 
                 // Получаем горизонтальное движение из packet.motion
                 val inputMotion = packet.motion?.let {
-                    Vector3f.from(it.x, 0f, it.y) // y в motion соответствует z в 3D
+                    Vector3f.from(it.getX(), 0f, it.getY()) // y в motion соответствует z в 3D
                 } ?: Vector3f.ZERO
 
                 // Получаем угол поворота (yaw) из rotation
@@ -151,9 +161,9 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     val speed = flySpeed.toDouble() * 0.8 // Уменьшен множитель для плавности
                     // Вращаем вектор движения в соответствии с yaw
                     val newMotion = Vector3f.from(
-                        ((-sin(yaw) * inputMotion.z.toDouble() + cos(yaw) * inputMotion.x.toDouble()) * speed).toFloat(),
+                        ((-sin(yaw) * inputMotion.getZ().toDouble() + cos(yaw) * inputMotion.getX().toDouble()) * speed).toFloat(),
                         0f,
-                        ((cos(yaw) * inputMotion.z.toDouble() + sin(yaw) * inputMotion.x.toDouble()) * speed).toFloat()
+                        ((cos(yaw) * inputMotion.getZ().toDouble() + sin(yaw) * inputMotion.getX().toDouble()) * speed).toFloat()
                     )
                     // Сглаживание: комбинируем новое движение с предыдущим
                     lastMotion.lerp(newMotion, 0.5f)
@@ -163,9 +173,9 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
 
                 // Комбинируем горизонтальное и вертикальное движение
                 val combinedMotion = Vector3f.from(
-                    horizontalMotion.x,
+                    horizontalMotion.getX(),
                     verticalMotion,
-                    horizontalMotion.z
+                    horizontalMotion.getZ()
                 )
 
                 // Отправляем SetEntityMotionPacket
@@ -177,12 +187,12 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 lastMotion = horizontalMotion // Обновляем последнее движение
 
                 // Синхронизируем позицию с сервером через MovePlayerPacket
-                val playerPosition = packet.position?.let { Vector3f.from(it.x, it.y, it.z) } ?: Vector3f.ZERO
+                val playerPosition = packet.position?.let { Vector3f.from(it.getX(), it.getY(), it.getZ()) } ?: Vector3f.ZERO
                 if (playerPosition != Vector3f.ZERO) {
                     val movePacket = MovePlayerPacket().apply {
                         runtimeEntityId = session.localPlayer.runtimeEntityId
                         position = playerPosition
-                        rotation = packet.rotation?.let { Vector3f.from(it.x, it.y, it.z) } ?: Vector3f.ZERO
+                        rotation = packet.rotation?.let { Vector3f.from(it.getX(), it.getY(), it.getZ()) } ?: Vector3f.ZERO
                         mode = MovePlayerPacket.Mode.NORMAL
                         setOnGround(false) // Игрок в полете
                         tick = packet.tick
@@ -199,12 +209,12 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 lastMotion = Vector3f.ZERO
 
                 // Синхронизируем позицию
-                val playerPosition = packet.position?.let { Vector3f.from(it.x, it.y, it.z) } ?: Vector3f.ZERO
+                val playerPosition = packet.position?.let { Vector3f.from(it.getX(), it.getY(), it.getZ()) } ?: Vector3f.ZERO
                 if (playerPosition != Vector3f.ZERO) {
                     val movePacket = MovePlayerPacket().apply {
                         runtimeEntityId = session.localPlayer.runtimeEntityId
                         position = playerPosition
-                        rotation = packet.rotation?.let { Vector3f.from(it.x, it.y, it.z) } ?: Vector3f.ZERO
+                        rotation = packet.rotation?.let { Vector3f.from(it.getX(), it.getY(), it.getZ()) } ?: Vector3f.ZERO
                         mode = MovePlayerPacket.Mode.NORMAL
                         setOnGround(false) // Игрок падает
                         tick = packet.tick

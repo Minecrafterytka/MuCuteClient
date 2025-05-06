@@ -63,7 +63,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     Ability.BUILD,
                     Ability.MINE,
                     Ability.DOORS_AND_SWITCHES,
-                    OPEN_CONTAINERS,
+                    Ability.OPEN_CONTAINERS,
                     Ability.ATTACK_PLAYERS,
                     Ability.ATTACK_MOBS,
                     Ability.OPERATOR_COMMANDS,
@@ -130,7 +130,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                         runtimeEntityId = session.localPlayer.runtimeEntityId
                         position = playerPosition
                         rotation = packet.rotation?.let { Vector3f.from(it.getX(), it.getY(), it.getZ()) } ?: Vector3f.ZERO
-                        mode = MovePlayerPacket.Mode   // Assuming this is the enum that contains the possible modes
+                        mode = MovePlayerPacket.Mode.NORMAL
                         tick = packet.tick
                     }
                     session.serverBound(movePacket)

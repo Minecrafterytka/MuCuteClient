@@ -109,8 +109,8 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
 
                 // Правильно получаем горизонтальное движение из packet.motion
                 val horizontalMotion = packet.motion?.let {
-                    // Используем it.x для X и it.z для Z
-                    Vector3f.from(it.x, 0f, it.z)
+                    // Используем it.x для X и it.y для Z (в Bedrock y в motion соответствует z в 3D)
+                    Vector3f.from(it.x, 0f, it.y)
                 } ?: Vector3f.ZERO // Fallback на нулевой вектор, если motion null
 
                 // Комбинируем горизонтальное и вертикальное движение
@@ -137,7 +137,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                         position = playerPosition
                         rotation = packet.rotation?.let { Vector3f.from(it.x, it.y, it.z) } ?: Vector3f.ZERO
                         mode = MovePlayerPacket.Mode.NORMAL
-                        onGround = packet.inputData.contains(PlayerAuthInputData.ON_GROUND)
+                        setOnGround(false) // Устанавливаем onGround=false, так как игрок в полете
                         tick = packet.tick
                     }
                     session.serverBound(movePacket) // Отправляем на сервер

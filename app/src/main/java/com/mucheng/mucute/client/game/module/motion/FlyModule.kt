@@ -14,7 +14,6 @@ import org.cloudburstmc.protocol.bedrock.packet.SetEntityMotionPacket
 import org.cloudburstmc.protocol.bedrock.packet.UpdateAbilitiesPacket
 import org.cloudburstmc.math.vector.Vector3f
 import org.cloudburstmc.protocol.bedrock.data.PlayerAuthInputData
-import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.PI
@@ -78,31 +77,6 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
         })
     }
 
-    // Пакет для отключения FLY_SPEED при ходьбе
-    private val walkingAbilitiesPacket = UpdateAbilitiesPacket().apply {
-        playerPermission = PlayerPermission.OPERATOR
-        commandPermission = CommandPermission.OWNER
-        abilityLayers.add(AbilityLayer().apply {
-            layerType = AbilityLayer.Type.BASE
-            abilitiesSet.addAll(Ability.entries.toTypedArray())
-            abilityValues.addAll(
-                arrayOf(
-                    Ability.BUILD,
-                    Ability.MINE,
-                    Ability.DOORS_AND_SWITCHES,
-                    Ability.OPEN_CONTAINERS,
-                    Ability.ATTACK_PLAYERS,
-                    Ability.ATTACK_MOBS,
-                    Ability.OPERATOR_COMMANDS,
-                    Ability.MAY_FLY,
-                    Ability.WALK_SPEED
-                )
-            )
-            walkSpeed = 0.1f
-            flySpeed = 0.0f
-        })
-    }
-
     override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
         val packet = interceptablePacket.packet
 
@@ -137,7 +111,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                         packet.inputData.contains(PlayerAuthInputData.SNEAKING)
 
                 // Управляем вертикальным движением
-                var verticalMotion = 0f // Без гравитации по умолчанию
+                var verticalMotion = 0f // Без вмешательства в гравитацию
                 if (isFlying) {
                     if (packet.inputData.contains(PlayerAuthInputData.JUMPING)) {
                         verticalMotion = flySpeed * verticalMultiplier // Взлет
@@ -172,34 +146,14 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     horizontalMotion.getZ()
                 )
 
-                // Отправляем движение клиенту только при активности
-                if (abs(combinedMotion.getX().toDouble()) > 0.01 ||
-                    abs(combinedMotion.getZ().toDouble()) > 0.01 ||
-                    abs(verticalMotion) > 0.01) {
-                    val motionPacket = SetEntityMotionPacket().apply {
-                        runtimeEntityId = session.localPlayer.runtimeEntityId
-                        motion = combinedMotion
-                    }
-                    session.clientBound(motionPacket)
-                } else if (!isFlying && inputMotion == Vector3f.ZERO) {
-                    // Мгновенная остановка
-                    val stopMotionPacket = SetEntityMotionPacket().apply {
-                        runtimeEntityId = session.localPlayer.runtimeEntityId
-                        motion = Vector3f.ZERO
-                    }
-                    session.clientBound(stopMotionPacket)
+                // Отправляем движение клиенту на каждом тике при активном полете
+                val motionPacket = SetEntityMotionPacket().apply {
+                    runtimeEntityId = session.localPlayer.runtimeEntityId
+                    motion = if (isFlying) combinedMotion else Vector3f.ZERO
                 }
+                session.clientBound(motionPacket)
 
-                // Управляем FLY_SPEED для ходьбы
-                if (!isFlying && inputMotion == Vector3f.ZERO) {
-                    walkingAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
-                    session.clientBound(walkingAbilitiesPacket)
-                } else {
-                    enableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
-                    session.clientBound(enableFlyAbilitiesPacket)
-                }
-
-                // Синхронизируем позицию с сервером
+                // Синхронизируем позицию с сервером на каждом тике
                 val playerPosition = packet.position?.let { Vector3f.from(it.getX(), it.getY(), it.getZ()) } ?: Vector3f.ZERO
                 if (playerPosition != Vector3f.ZERO) {
                     val movePacket = MovePlayerPacket().apply {

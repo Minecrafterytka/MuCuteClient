@@ -14,6 +14,7 @@ import org.cloudburstmc.protocol.bedrock.packet.SetEntityMotionPacket
 import org.cloudburstmc.protocol.bedrock.packet.UpdateAbilitiesPacket
 import org.cloudburstmc.math.vector.Vector3f
 import org.cloudburstmc.protocol.bedrock.data.PlayerAuthInputData
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.PI
@@ -125,10 +126,9 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
             }
 
             if (isEnabled) {
-                // Перехватываем START_FLYING, STOP_FLYING и FLYING
+                // Перехватываем START_FLYING и STOP_FLYING
                 if (packet.inputData.contains(PlayerAuthInputData.START_FLYING) ||
-                    packet.inputData.contains(PlayerAuthInputData.STOP_FLYING) ||
-                    packet.inputData.contains(PlayerAuthInputData.FLYING)) {
+                    packet.inputData.contains(PlayerAuthInputData.STOP_FLYING)) {
                     interceptablePacket.intercept()
                 }
 
@@ -173,9 +173,9 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 )
 
                 // Отправляем движение клиенту только при активности
-                if (combinedMotion.getX().toDouble().absoluteValue > 0.01 ||
-                    combinedMotion.getZ().toDouble().absoluteValue > 0.01 ||
-                    verticalMotion.absoluteValue > 0.01) {
+                if (abs(combinedMotion.getX().toDouble()) > 0.01 ||
+                    abs(combinedMotion.getZ().toDouble()) > 0.01 ||
+                    abs(verticalMotion) > 0.01) {
                     val motionPacket = SetEntityMotionPacket().apply {
                         runtimeEntityId = session.localPlayer.runtimeEntityId
                         motion = combinedMotion

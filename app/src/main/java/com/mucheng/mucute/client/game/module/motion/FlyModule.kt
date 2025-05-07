@@ -20,7 +20,8 @@ import kotlin.math.PI
 
 class FlyModule : Module("fly", ModuleCategory.Motion) {
 
-    private var flySpeed by floatValue("flySpeed", 0.3f, 0.05f..1.0f) // Настроено для креатива
+    private var flySpeed by floatValue("flySpeed", 0.3f, 0.05f..1.0f) // Горизонтальная скорость
+    private var verticalMultiplier by floatValue("verticalMultiplier", 0.8f, 0.5f..2.0f) // Множитель вертикальной скорости
     private var canFly = false // Флаг активации способностей
 
     // Собственная функция для преобразования градусов в радианы
@@ -76,6 +77,31 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
         })
     }
 
+    // Пакет для отключения FLY_SPEED при ходьбе
+    private val walkingAbilitiesPacket = UpdateAbilitiesPacket().apply {
+        playerPermission = PlayerPermission.OPERATOR
+        commandPermission = CommandPermission.OWNER
+        abilityLayers.add(AbilityLayer().apply {
+            layerType = AbilityLayer.Type.BASE
+            abilitiesSet.addAll(Ability.entries.toTypedArray())
+            abilityValues.addAll(
+                arrayOf(
+                    Ability.BUILD,
+                    Ability.MINE,
+                    Ability.DOORS_AND_SWITCHES,
+                    Ability.OPEN_CONTAINERS,
+                    Ability.ATTACK_PLAYERS,
+                    Ability.ATTACK_MOBS,
+                    Ability.OPERATOR_COMMANDS,
+                    Ability.MAY_FLY,
+                    Ability.WALK_SPEED
+                )
+            )
+            walkSpeed = 0.1f
+            flySpeed = 0.0f
+        })
+    }
+
     override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
         val packet = interceptablePacket.packet
 
@@ -99,18 +125,25 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
             }
 
             if (isEnabled) {
-                // Перехватываем START_FLYING и STOP_FLYING
+                // Перехватываем START_FLYING, STOP_FLYING и FLYING
                 if (packet.inputData.contains(PlayerAuthInputData.START_FLYING) ||
-                    packet.inputData.contains(PlayerAuthInputData.STOP_FLYING)) {
+                    packet.inputData.contains(PlayerAuthInputData.STOP_FLYING) ||
+                    packet.inputData.contains(PlayerAuthInputData.FLYING)) {
                     interceptablePacket.intercept()
                 }
 
+                // Проверяем, активен ли полет
+                val isFlying = packet.inputData.contains(PlayerAuthInputData.JUMPING) ||
+                        packet.inputData.contains(PlayerAuthInputData.SNEAKING)
+
                 // Управляем вертикальным движением
                 var verticalMotion = 0f // Без гравитации по умолчанию
-                if (packet.inputData.contains(PlayerAuthInputData.JUMPING)) {
-                    verticalMotion = flySpeed * 1.4f // Взлет
-                } else if (packet.inputData.contains(PlayerAuthInputData.SNEAKING)) {
-                    verticalMotion = -flySpeed * 1.4f // Спуск
+                if (isFlying) {
+                    if (packet.inputData.contains(PlayerAuthInputData.JUMPING)) {
+                        verticalMotion = flySpeed * verticalMultiplier // Взлет
+                    } else if (packet.inputData.contains(PlayerAuthInputData.SNEAKING)) {
+                        verticalMotion = -flySpeed * verticalMultiplier // Спуск
+                    }
                 }
 
                 // Получаем горизонтальное движение
@@ -121,8 +154,8 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                 // Получаем угол поворота (yaw)
                 val yaw = packet.rotation?.y?.toDouble()?.let { toRadians(it) } ?: 0.0
                 // Преобразуем движение в направлении взгляда
-                val horizontalMotion = if (inputMotion != Vector3f.ZERO) {
-                    val speed = flySpeed.toDouble() * 0.9 // Настроено для креатива
+                val horizontalMotion = if (inputMotion != Vector3f.ZERO && isFlying) {
+                    val speed = flySpeed.toDouble() * 0.9 // Горизонтальная скорость
                     Vector3f.from(
                         ((-sin(yaw) * inputMotion.getZ().toDouble() + cos(yaw) * inputMotion.getX().toDouble()) * speed).toFloat(),
                         0f,
@@ -139,13 +172,31 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     horizontalMotion.getZ()
                 )
 
-                // Отправляем движение клиенту
-                if (combinedMotion != Vector3f.ZERO || verticalMotion != 0f) {
+                // Отправляем движение клиенту только при активности
+                if (combinedMotion.getX().toDouble().absoluteValue > 0.01 ||
+                    combinedMotion.getZ().toDouble().absoluteValue > 0.01 ||
+                    verticalMotion.absoluteValue > 0.01) {
                     val motionPacket = SetEntityMotionPacket().apply {
                         runtimeEntityId = session.localPlayer.runtimeEntityId
                         motion = combinedMotion
                     }
                     session.clientBound(motionPacket)
+                } else if (!isFlying && inputMotion == Vector3f.ZERO) {
+                    // Мгновенная остановка
+                    val stopMotionPacket = SetEntityMotionPacket().apply {
+                        runtimeEntityId = session.localPlayer.runtimeEntityId
+                        motion = Vector3f.ZERO
+                    }
+                    session.clientBound(stopMotionPacket)
+                }
+
+                // Управляем FLY_SPEED для ходьбы
+                if (!isFlying && inputMotion == Vector3f.ZERO) {
+                    walkingAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
+                    session.clientBound(walkingAbilitiesPacket)
+                } else {
+                    enableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
+                    session.clientBound(enableFlyAbilitiesPacket)
                 }
 
                 // Синхронизируем позицию с сервером

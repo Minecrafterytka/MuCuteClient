@@ -23,7 +23,6 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
     private var flySpeed by floatValue("flySpeed", 0.3f, 0.05f..1.0f) // Горизонтальная скорость
     private var verticalMultiplier by floatValue("verticalMultiplier", 0.8f, 0.5f..2.0f) // Множитель вертикальной скорости
     private var canFly = false // Флаг активации способностей
-    private var wasFlying = false // Флаг для отслеживания предыдущего состояния полёта
 
     // Собственная функция для преобразования градусов в радианы
     private fun toRadians(degrees: Double): Double = degrees * (PI / 180.0)
@@ -36,7 +35,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
             layerType = AbilityLayer.Type.BASE
             abilitiesSet.addAll(Ability.entries.toTypedArray())
             abilityValues.addAll(
-                arrayOf(
+                listOf(
                     Ability.BUILD,
                     Ability.MINE,
                     Ability.DOORS_AND_SWITCHES,
@@ -62,12 +61,12 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
             layerType = AbilityLayer.Type.BASE
             abilitiesSet.addAll(Ability.entries.toTypedArray())
             abilityValues.addAll(
-                arrayOf(
+                listOf(
                     Ability.BUILD,
                     Ability.MINE,
                     Ability.DOORS_AND_SWITCHES,
                     Ability.OPEN_CONTAINERS,
-                    AttributeError: 'Vector3f' object has no attribute 'getY'no attribute 'getY'    Ability.ATTACK_PLAYERS,
+                    Ability.ATTACK_PLAYERS,
                     Ability.ATTACK_MOBS,
                     Ability.OPERATOR_COMMANDS,
                     Ability.WALK_SPEED
@@ -123,18 +122,18 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
 
                 // Получаем горизонтальное движение
                 val inputMotion = packet.motion?.let {
-                    Vector3f.from(it.getX(), 0f, it.getZ())
+                    Vector3f.from(it.getX(), 0f, it.getY())
                 } ?: Vector3f.ZERO
 
                 // Получаем угол поворота (yaw)
                 val yaw = packet.rotation?.y?.toDouble()?.let { toRadians(it) } ?: 0.0
                 // Преобразуем движение в направлении взгляда
                 val horizontalMotion = if (inputMotion != Vector3f.ZERO && isFlying) {
-                    val speed = flySpeed.toDouble() // Без множителя 0.9
+                    val speed = flySpeed.toDouble() // Без множителей
                     Vector3f.from(
-                        ((-sin(yaw) * inputMotion.getZ().toDouble() + cos(yaw) * inputMotion.getX().toDouble()) * speed).toFloat(),
+                        ((-sin(yaw) * inputMotion.getY().toDouble() + cos(yaw) * inputMotion.getX().toDouble()) * speed).toFloat(),
                         0f,
-                        ((cos(yaw) * inputMotion.getZ().toDouble() + sin(yaw) * inputMotion.getX().toDouble()) * speed).toFloat()
+                        ((cos(yaw) * inputMotion.getY().toDouble() + sin(yaw) * inputMotion.getX().toDouble()) * speed).toFloat()
                     )
                 } else {
                     Vector3f.ZERO
@@ -154,17 +153,14 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                         motion = combinedMotion
                     }
                     session.clientBound(motionPacket)
-                } else if (wasFlying && !isFlying) {
-                    // Мгновенная остановка при прекращении полёта
+                } else if (isFlying && combinedMotion == Vector3f.ZERO) {
+                    // Мгновенная остановка при отсутствии движения
                     val stopMotionPacket = SetEntityMotionPacket().apply {
                         runtimeEntityId = session.localPlayer.runtimeEntityId
                         motion = Vector3f.ZERO
                     }
                     session.clientBound(stopMotionPacket)
                 }
-
-                // Обновляем состояние полёта
-                wasFlying = isFlying
 
                 // Синхронизируем позицию с сервером на каждом тике
                 val playerPosition = packet.position?.let { Vector3f.from(it.getX(), it.getY(), it.getZ()) } ?: Vector3f.ZERO

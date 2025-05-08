@@ -23,6 +23,8 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
     private var flySpeed by floatValue("flySpeed", 0.3f, 0.05f..1.0f)
     private var verticalSpeed by floatValue("verticalSpeed", 0.3f, 0.1f..1.0f)
     private var canFly = false
+    private var tickCounter = 0
+    private var lastPosition: Vector3f? = null
 
     private fun toRadians(degrees: Double): Double = degrees * (PI / 180.0)
 
@@ -55,7 +57,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
         playerPermission = PlayerPermission.OPERATOR
         commandPermission = CommandPermission.OWNER
         abilityLayers.add(AbilityLayer().apply {
-            layerType = AbilityLayer.Type.BASE
+            layerType = ActivityLayer.Type.BASE
             abilitiesSet.addAll(Ability.entries.toTypedArray())
             abilityValues.addAll(
                 listOf(
@@ -135,28 +137,33 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
 
                 if (isFlying && combinedMotion != Vector3f.ZERO) {
                     val motionPacket = SetEntityMotionPacket().apply {
-                        runtimeEntityId = session.localPlayer.runtimeEntityId
+                        runtimeEntityId = session.localPlayer.uniqueEntityId
                         motion = combinedMotion
                     }
                     session.clientBound(motionPacket)
                 } else if (isFlying) {
                     val stopMotionPacket = SetEntityMotionPacket().apply {
-                        runtimeEntityId = session.localPlayer.runtimeEntityId
+                        runtimeEntityId = session.localPlayer.uniqueEntityId
                         motion = Vector3f.ZERO
                     }
                     session.clientBound(stopMotionPacket)
                 }
 
+                tickCounter++
                 val playerPosition = packet.position?.let { Vector3f.from(it.x, it.y, it.z) } ?: Vector3f.ZERO
-                if (playerPosition != Vector3f.ZERO) {
-                    val movePacket = MovePlayerPacket().apply {
-                        runtimeEntityId = session.localPlayer.runtimeEntityId
-                        position = playerPosition
-                        rotation = packet.rotation?.let { Vector3f.from(it.x, it.y, it.z) } ?: Vector3f.ZERO
-                        mode = MovePlayerPacket.Mode.NORMAL
-                        tick = packet.tick
+                if (playerPosition != Vector3f.ZERO && tickCounter % 2 == 0) {
+                    // Проверяем, изменилась ли позиция
+                    if (lastPosition == null || playerPosition != lastPosition) {
+                        val movePacket = MovePlayerPacket().apply {
+                            runtimeEntityId = session.localPlayer.uniqueEntityId
+                            position = playerPosition
+                            rotation = packet.rotation?.let { Vector3f.from(it.x, it.y, it.z) } ?: Vector3f.ZERO
+                            mode = MovePlayerPacket.Mode.NORMAL
+                            tick = packet.tick
+                        }
+                        session.serverBound(movePacket)
+                        lastPosition = playerPosition
                     }
-                    session.serverBound(movePacket)
                 }
             }
         }

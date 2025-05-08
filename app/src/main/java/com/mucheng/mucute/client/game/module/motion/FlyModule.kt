@@ -57,7 +57,7 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
         playerPermission = PlayerPermission.OPERATOR
         commandPermission = CommandPermission.OWNER
         abilityLayers.add(AbilityLayer().apply {
-            layerType = ActivityLayer.Type.BASE
+            layerType = AbilityLayer.Type.BASE
             abilitiesSet.addAll(Ability.entries.toTypedArray())
             abilityValues.addAll(
                 listOf(

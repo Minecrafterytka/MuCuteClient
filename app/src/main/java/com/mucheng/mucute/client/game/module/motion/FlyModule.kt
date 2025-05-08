@@ -20,14 +20,12 @@ import kotlin.math.PI
 
 class FlyModule : Module("fly", ModuleCategory.Motion) {
 
-    private var flySpeed by floatValue("flySpeed", 0.3f, 0.05f..1.0f) // Горизонтальная скорость
-    private var verticalMultiplier by floatValue("verticalMultiplier", 0.8f, 0.5f..2.0f) // Множитель вертикальной скорости
-    private var canFly = false // Флаг активации способностей
+    private var flySpeed by floatValue("flySpeed", 0.3f, 0.05f..1.0f)
+    private var verticalSpeed by floatValue("verticalSpeed", 0.3f, 0.1f..1.0f)
+    private var canFly = false
 
-    // Собственная функция для преобразования градусов в радианы
     private fun toRadians(degrees: Double): Double = degrees * (PI / 180.0)
 
-    // Пакет для включения полета локально
     private val enableFlyAbilitiesPacket = UpdateAbilitiesPacket().apply {
         playerPermission = PlayerPermission.OPERATOR
         commandPermission = CommandPermission.OWNER
@@ -53,7 +51,6 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
         })
     }
 
-    // Пакет для отключения полета
     private val disableFlyAbilitiesPacket = UpdateAbilitiesPacket().apply {
         playerPermission = PlayerPermission.OPERATOR
         commandPermission = CommandPermission.OWNER
@@ -80,15 +77,12 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
     override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
         val packet = interceptablePacket.packet
 
-        // Блокируем запросы на способности полета
         if (packet is RequestAbilityPacket && packet.ability == Ability.FLYING) {
             interceptablePacket.intercept()
             return
         }
 
-        // Обрабатываем ввод игрока
         if (packet is PlayerAuthInputPacket) {
-            // Включаем способности полета при активации модуля
             if (!canFly && isEnabled) {
                 enableFlyAbilitiesPacket.uniqueEntityId = session.localPlayer.uniqueEntityId
                 session.clientBound(enableFlyAbilitiesPacket)
@@ -100,61 +94,52 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
             }
 
             if (isEnabled) {
-                // Перехватываем START_FLYING и STOP_FLYING
                 if (packet.inputData.contains(PlayerAuthInputData.START_FLYING) ||
                     packet.inputData.contains(PlayerAuthInputData.STOP_FLYING)) {
                     interceptablePacket.intercept()
                 }
 
-                // Проверяем, активен ли полет
                 val isFlying = packet.inputData.contains(PlayerAuthInputData.JUMPING) ||
                         packet.inputData.contains(PlayerAuthInputData.SNEAKING)
 
-                // Управляем вертикальным движением
                 var verticalMotion = 0f
                 if (isFlying) {
                     if (packet.inputData.contains(PlayerAuthInputData.JUMPING)) {
-                        verticalMotion = flySpeed * verticalMultiplier // Взлёт
+                        verticalMotion = verticalSpeed
                     } else if (packet.inputData.contains(PlayerAuthInputData.SNEAKING)) {
-                        verticalMotion = -flySpeed * verticalMultiplier // Спуск
+                        verticalMotion = -verticalSpeed
                     }
                 }
 
-                // Получаем горизонтальное движение
                 val inputMotion = packet.motion?.let {
-                    Vector3f.from(it.getX(), 0f, it.getY())
+                    Vector3f.from(it.x, 0f, it.y)
                 } ?: Vector3f.ZERO
 
-                // Получаем угол поворота (yaw)
                 val yaw = packet.rotation?.y?.toDouble()?.let { toRadians(it) } ?: 0.0
-                // Преобразуем движение в направлении взгляда
                 val horizontalMotion = if (inputMotion != Vector3f.ZERO && isFlying) {
-                    val speed = flySpeed.toDouble() // Без множителей
+                    val speed = flySpeed.toDouble()
                     Vector3f.from(
-                        ((-sin(yaw) * inputMotion.getY().toDouble() + cos(yaw) * inputMotion.getX().toDouble()) * speed).toFloat(),
+                        ((-sin(yaw) * inputMotion.z.toDouble() + cos(yaw) * inputMotion.x.toDouble()) * speed).toFloat(),
                         0f,
-                        ((cos(yaw) * inputMotion.getY().toDouble() + sin(yaw) * inputMotion.getX().toDouble()) * speed).toFloat()
+                        ((cos(yaw) * inputMotion.z.toDouble() + sin(yaw) * inputMotion.x.toDouble()) * speed).toFloat()
                     )
                 } else {
                     Vector3f.ZERO
                 }
 
-                // Комбинируем горизонтальное и вертикальное движение
                 val combinedMotion = Vector3f.from(
-                    horizontalMotion.getX(),
+                    horizontalMotion.x,
                     verticalMotion,
-                    horizontalMotion.getZ()
+                    horizontalMotion.z
                 )
 
-                // Отправляем движение только при активном полёте
                 if (isFlying && combinedMotion != Vector3f.ZERO) {
                     val motionPacket = SetEntityMotionPacket().apply {
                         runtimeEntityId = session.localPlayer.runtimeEntityId
                         motion = combinedMotion
                     }
                     session.clientBound(motionPacket)
-                } else if (isFlying && combinedMotion == Vector3f.ZERO) {
-                    // Мгновенная остановка при отсутствии движения
+                } else if (isFlying) {
                     val stopMotionPacket = SetEntityMotionPacket().apply {
                         runtimeEntityId = session.localPlayer.runtimeEntityId
                         motion = Vector3f.ZERO
@@ -162,13 +147,12 @@ class FlyModule : Module("fly", ModuleCategory.Motion) {
                     session.clientBound(stopMotionPacket)
                 }
 
-                // Синхронизируем позицию с сервером на каждом тике
-                val playerPosition = packet.position?.let { Vector3f.from(it.getX(), it.getY(), it.getZ()) } ?: Vector3f.ZERO
+                val playerPosition = packet.position?.let { Vector3f.from(it.x, it.y, it.z) } ?: Vector3f.ZERO
                 if (playerPosition != Vector3f.ZERO) {
                     val movePacket = MovePlayerPacket().apply {
                         runtimeEntityId = session.localPlayer.runtimeEntityId
                         position = playerPosition
-                        rotation = packet.rotation?.let { Vector3f.from(it.getX(), it.getY(), it.getZ()) } ?: Vector3f.ZERO
+                        rotation = packet.rotation?.let { Vector3f.from(it.x, it.y, it.z) } ?: Vector3f.ZERO
                         mode = MovePlayerPacket.Mode.NORMAL
                         tick = packet.tick
                     }

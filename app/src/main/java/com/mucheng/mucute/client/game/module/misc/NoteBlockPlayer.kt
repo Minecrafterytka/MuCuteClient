@@ -16,9 +16,9 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
 
     // Настройки
     private val playMusic by boolValue("play_music", true)
-    private val songFile by stringValue("song_file", "") // Пусто = использовать встроенную песню
+    private val songFile by stringValue("song_file", "") // Имя JSON-файла (например, "bad_piggies.json")
     private val soundId by intValue("sound_id", 26, 0..100) // 26 = NOTE (Harp)
-    private val tickDuration by intValue("tick_duration", 50, 10..500) // 50 мс, настраиваемый
+    private val tickDuration by intValue("tick_duration", 50, 10..500) // 50 мс
 
     // Данные нот
     @Serializable
@@ -40,6 +40,14 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     private var currentNoteIndex = 0
     private var lastNoteTime: Long = 0
     private var accumulatedTicks: Int = 0
+
+    // Путь к внутреннему хранилищу (замените на реальный путь, если API доступен)
+    private val basePath: String by lazy {
+        // Попробуем захардкодить путь для теста (замените на реальный API, если есть)
+        "/data/user/0/com.mucheng.mucute/files/MuCute/songs/"
+        // В идеале: context.getFilesDir().absolutePath + "/MuCute/songs/"
+        // Если есть доступ к context через session или другой API, используйте его
+    }
 
     override fun onEnabled() {
         super.onEnabled()
@@ -82,7 +90,19 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
 
     private fun loadSong() {
         if (songFile.isNotEmpty()) {
-            val file = File("/sdcard/MuCute/songs/$songFile")
+            // Создаём папку, если её нет (во внутреннем хранилище)
+            val songsDir = File(basePath)
+            if (!songsDir.exists()) {
+                try {
+                    songsDir.mkdirs()
+                    session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Created directory: $basePath")
+                } catch (e: Exception) {
+                    session.displayClientMessage("§l§b[NoteBlockPlayer] §r§cFailed to create directory: ${e.message}")
+                }
+            }
+
+            val file = File(basePath, songFile)
+            session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Trying to load: ${file.absolutePath}")
             if (file.exists()) {
                 try {
                     val jsonString = file.readText()
@@ -92,9 +112,10 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
                     session.displayClientMessage("§l§b[NoteBlockPlayer] §r§cFailed to load song: ${e.message}")
                 }
             } else {
-                session.displayClientMessage("§l§b[NoteBlockPlayer] §r§cSong file not found: $songFile")
+                session.displayClientMessage("§l§b[NoteBlockPlayer] §r§cSong file not found: ${file.absolutePath}")
             }
         } else {
+            session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Using built-in Bad Piggies")
             currentSong = null // Использовать badPiggies
         }
     }

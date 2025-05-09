@@ -3,15 +3,15 @@ package com.mucheng.mucute.client.game.module.misc
 import com.mucheng.mucute.client.game.InterceptablePacket
 import com.mucheng.mucute.client.game.Module
 import com.mucheng.mucute.client.game.ModuleCategory
-import org.cloudburstmc.math.vector.Vector3i
-import org.cloudburstmc.protocol.bedrock.packet.BlockEventPacket
+import org.cloudburstmc.math.vector.Vector3f
+import org.cloudburstmc.protocol.bedrock.data.SoundEvent
+import org.cloudburstmc.protocol.bedrock.packet.LevelSoundEventPacket
 import org.cloudburstmc.protocol.bedrock.packet.TextPacket
 
 class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
 
     // Настройки
     private val playMusic by boolValue("play_music", true)
-    private val blockPositionType by stringValue("block_position", "below", listOf("below", "front")) // Под ногами или спереди
 
     // Данные нот
     data class Note(val instrument: Byte, val key: Byte, val duration: Int)
@@ -36,7 +36,6 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     private var currentNoteIndex = 0
     private var lastNoteTime: Long = 0
     private var accumulatedTicks: Int = 0
-    private lateinit var blockPosition: Vector3i
 
     override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
         val packet = interceptablePacket.packet
@@ -54,7 +53,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
         // Проигрывание мелодии
         if (isEnabled && playMusic && isPlaying) {
             val currentTime = System.currentTimeMillis()
-            val tickDuration = 150L // 150 мс для снижения частоты пакетов
+            val tickDuration = 200L // 200 мс для снижения частоты пакетов
             if (currentTime - lastNoteTime >= tickDuration) {
                 accumulatedTicks++
                 if (currentNoteIndex < nokiaTune.size) {
@@ -72,43 +71,34 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
         }
     }
 
-    private fun setBlockPosition() {
-        val blockX = session.localPlayer.vec3Position.x.toInt()
-        val blockY = if (blockPositionType == "below") {
-            (session.localPlayer.vec3Position.y - 1.0f).toInt() // Под ногами
-        } else {
-            session.localPlayer.vec3Position.y.toInt() // На уровне ног
-        }
-        val blockZ = if (blockPositionType == "front") {
-            (session.localPlayer.vec3Position.z + 1).toInt() // Спереди
-        } else {
-            session.localPlayer.vec3Position.z.toInt() // Под ногами
-        }
-        blockPosition = Vector3i.from(blockX, blockY, blockZ)
-        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Targeting note block at $blockPosition")
-    }
-
     private fun playNote(note: Note) {
         // Высота ноты (key 33–57, преобразуем в 0–24)
         val key33 = (note.key - 33).coerceIn(0, 24)
 
-        // Отправляем BlockEventPacket для воспроизведения ноты
-        val packet = BlockEventPacket().apply {
-            this.blockPosition = blockPosition
-            this.eventType = note.instrument.toInt() // Инструмент (0 = Piano/Harp)
-            this.eventData = key33 // Высота ноты (0–24)
+        // Отправляем LevelSoundEventPacket для воспроизведения звука
+        val packet = LevelSoundEventPacket().apply {
+            sound = SoundEvent.NOTE
+            position = Vector3f.from(
+                session.localPlayer.vec3Position.x,
+                session.localPlayer.vec3Position.y,
+                session.localPlayer.vec3Position.z
+            )
+            extraData = key33 // Высота ноты (0–24)
+            identifier = ":" // Стандартный идентификатор
+            isBabySound = false
+            isRelativeVolumeDisabled = false
         }
         session.serverBound(packet)
         session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing note: key=${note.key}, pitch=$key33")
     }
 
     private fun startPlaying() {
-        setBlockPosition() // Задаем позицию блока
         isPlaying = true
         currentNoteIndex = 0
         accumulatedTicks = 0
         lastNoteTime = System.currentTimeMillis()
         session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aNokia Tune started")
+        session.displayClientMessage("Player position: ${session.localPlayer.vec3Position}")
     }
 
     private fun stopPlaying() {

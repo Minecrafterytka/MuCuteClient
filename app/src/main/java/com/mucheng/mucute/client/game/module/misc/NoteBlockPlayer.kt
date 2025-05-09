@@ -63,7 +63,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
             val tickDuration = 50L // 50 мс для более быстрого воспроизведения
             if (currentTime - lastNoteTime >= tickDuration) {
                 accumulatedTicks++
-                if (currentNoteIndex < nokiaTune.size) {
+                if (currentNoteIndex < badPiggies.size) {
                     val note = badPiggies[currentNoteIndex]
                     if (accumulatedTicks >= note.duration) {
                         playNote(note)

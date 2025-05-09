@@ -12,7 +12,6 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
 
     // Настройки
     private val playMusic by boolValue("play_music", true)
-    private val instrument by intValue("instrument", 0, 0..4) // 0=Harp, 1=Bass, 2=Snare, 3=Hat, 4=Bass Drum
 
     // Данные нот
     data class Note(val instrument: Byte, val key: Byte, val duration: Int)
@@ -91,13 +90,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
 
         // Отправляем LevelSoundEventPacket для воспроизведения звука
         val packet = LevelSoundEventPacket().apply {
-            sound = when (instrument) {
-                1 -> SoundEvent.NOTE_BASS
-                2 -> SoundEvent.NOTE_SNARE
-                3 -> SoundEvent.NOTE_HAT
-                4 -> SoundEvent.NOTE_BD
-                else -> SoundEvent.NOTE // Harp по умолчанию
-            }
+            sound = SoundEvent.NOTE // Harp, работает
             position = Vector3f.from(
                 session.localPlayer.vec3Position.x,
                 session.localPlayer.vec3Position.y,
@@ -109,7 +102,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
             isRelativeVolumeDisabled = false
         }
         session.serverBound(packet)
-        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing note: key=${note.key}, pitch=$key33, instrument=$instrument")
+        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing note: key=${note.key}, pitch=$key33")
     }
 
     private fun startPlaying() {

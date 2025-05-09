@@ -16,28 +16,103 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     // Данные нот
     data class Note(val instrument: Byte, val key: Byte, val duration: Int)
 
-    private val badPiggies = listOf(
-    Note(0, 50, 6), // D4
+private val AnySong = listOf(
+    //Spider Dance
+    Note(0, 36, 2), // C3
+    Note(0, 40, 2), // E3
+    Note(0, 43, 2), // G3
+    Note(0, 48, 3), // C4
+    Note(0, 36, 2), // C3
+    Note(0, 40, 2), // E3
+    Note(0, 43, 2), // G3
+    Note(0, 48, 3), // C4
+    Note(0, 52, 3), // E4
+    Note(0, 52, 3), // E4
+    Note(0, 52, 2), // E4
+    Note(0, 53, 4), // F4
     Note(0, 52, 3), // E4
     Note(0, 50, 3), // D4
-    Note(0, 48, 6), // C4
-    Note(0, 50, 6), // D4
-    Note(0, 53, 6), // F4
+    Note(0, 48, 3), // C4
+    Note(0, 48, 2), // C4
+    Note(0, 48, 2), // C4
+    Note(0, 50, 4), // D4
+    Note(0, 48, 3), // C4
+    Note(0, 47, 3), // B3
+    Note(0, 45, 3), // A3
+    Note(0, 45, 2), // A3
+    Note(0, 45, 2), // A3
+    Note(0, 47, 4), // B3
+    Note(0, 45, 3), // A3
+    Note(0, 43, 3), // G3
+    Note(0, 42, 3), // F#3
+    Note(0, 42, 2), // F#3
+    Note(0, 40, 2), // E3
+    Note(0, 38, 6), // D3
+    Note(0, 52, 3), // E4
+    Note(0, 52, 3), // E4
+    Note(0, 52, 2), // E4
+    Note(0, 53, 4), // F4
     Note(0, 52, 3), // E4
     Note(0, 50, 3), // D4
+    Note(0, 48, 3), // C4
+    Note(0, 48, 2), // C4
+    Note(0, 48, 2), // C4
+    Note(0, 50, 4), // D4
+    Note(0, 48, 3), // C4
+    Note(0, 47, 3), // B3
+    Note(0, 45, 3), // A3
+    Note(0, 45, 2), // A3
+    Note(0, 45, 2), // A3
+    Note(0, 47, 4), // B3
+    Note(0, 45, 3), // A3
+    Note(0, 43, 3), // G3
     Note(0, 48, 6), // C4
-    Note(0, 50, 6), // D4
-    Note(0, 50, 6), // D4
-    Note(0, 52, 3), // E4
-    Note(0, 50, 3), // D4
-    Note(0, 48, 6), // C4
-    Note(0, 50, 6), // D4
-    Note(0, 53, 6), // F4
-    Note(0, 55, 3), // G4
-    Note(0, 53, 3), // F4
-    Note(0, 52, 6), // E4
-    Note(0, 50, 12) // D4 (финал секции)
+    Note(0, 48, 2), // C4
+    Note(0, 50, 2), // D4
+    Note(0, 52, 2), // E4
+    Note(0, 53, 2), // F4
+    Note(0, 52, 2), // E4
+    Note(0, 50, 2), // D4
+    Note(0, 48, 3), // C4
+    Note(0, 47, 2), // B3
+    Note(0, 48, 2), // C4
+    Note(0, 50, 2), // D4
+    Note(0, 52, 2), // E4
+    Note(0, 50, 2), // D4
+    Note(0, 48, 2), // C4
+    Note(0, 47, 3), // B3
+    Note(0, 45, 2), // A3
+    Note(0, 47, 2), // B3
+    Note(0, 48, 2), // C4
+    Note(0, 50, 2), // D4
+    Note(0, 48, 2), // C4
+    Note(0, 47, 2), // B3
+    Note(0, 45, 3), // A3
+    Note(0, 43, 2), // G3
+    Note(0, 45, 2), // A3
+    Note(0, 47, 2), // B3
+    Note(0, 48, 2), // C4
+    Note(0, 47, 2), // B3
+    Note(0, 45, 2), // A3
+    Note(0, 43, 4), // G3
+    Note(0, 48, 3), // C4
+    Note(0, 48, 3), // C4
+    Note(0, 48, 2), // C4
+    Note(0, 48, 3), // C4
+    Note(0, 45, 3), // A3
+    Note(0, 45, 3), // A3
+    Note(0, 45, 2), // A3
+    Note(0, 45, 3), // A3
+    Note(0, 43, 3), // G3
+    Note(0, 43, 3), // G3
+    Note(0, 43, 2), // G3
+    Note(0, 43, 3), // G3
+    Note(0, 42, 3), // F#3
+    Note(0, 42, 3), // F#3
+    Note(0, 42, 2), // F#3
+    Note(0, 42, 6)  // F#3
 )
+
 
     private var isPlaying = false
     private var currentNoteIndex = 0
@@ -63,8 +138,8 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
             val tickDuration = 50L // 50 мс для более быстрого воспроизведения
             if (currentTime - lastNoteTime >= tickDuration) {
                 accumulatedTicks++
-                if (currentNoteIndex < badPiggies.size) {
-                    val note = badPiggies[currentNoteIndex]
+                if (currentNoteIndex < AnySong.size) {
+                    val note = AnySong[currentNoteIndex]
                     if (accumulatedTicks >= note.duration) {
                         playNote(note)
                         currentNoteIndex++

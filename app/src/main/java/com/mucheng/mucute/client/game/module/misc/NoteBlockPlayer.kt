@@ -82,12 +82,12 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
         val key33 = (note.key - 33).coerceIn(0, 24)
 
         val packet = LevelSoundEventPacket().apply {
-            this.sound = sound
-            this.position = session.localPlayer.vec3Position
-            this.extraData = key33 // Высота ноты (0–24)
-            this.data = 0 // Громкость не поддерживается, используем 0
-            this.babySound = false
-            this.relativeVolumeDisabled = false
+            setSound(sound)
+            setPosition(session.localPlayer.vec3Position)
+            setExtraData(key33) // Высота ноты (0–24)
+            setEntityType(":") // Стандартное значение для звуков без сущности
+            setBabySound(false)
+            setRelativeVolumeDisabled(false)
         }
         session.serverBound(packet)
         session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing note: key=${note.key}, extraData=$key33")

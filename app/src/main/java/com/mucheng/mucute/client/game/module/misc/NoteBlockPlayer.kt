@@ -42,34 +42,24 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     @Serializable
     data class Note(val instrument: Byte, val key: Byte, val duration: Int)
 
-    // Переработанная версия Never Gonna Give You Up (Rick Astley)
-    private val NeverGonnaGiveYouUp = listOf(
-        // Интро (E-D-E-D-E-B-D-B)
-        listOf(Note(8, 52, 5), Note(1, 40, 5), Note(2, 33, 2)),  // E4, E3, Бас-барабан
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(3, 35, 2)),  // D4, D3, Малый барабан
-        listOf(Note(8, 52, 5), Note(1, 40, 5), Note(2, 33, 2)),  // E4, E3, Бас-барабан
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(3, 35, 2)),  // D4, D3, Малый барабан
-        listOf(Note(8, 52, 5), Note(1, 40, 5), Note(2, 33, 2)),  // E4, E3, Бас-барабан
-        listOf(Note(8, 47, 5), Note(1, 35, 5), Note(5, 57, 2)),  // B3, B2, Колокольчик
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(3, 35, 2)),  // D4, D3, Малый барабан
-        listOf(Note(8, 47, 5), Note(1, 35, 5), Note(2, 33, 2)),  // B3, B2, Бас-барабан
-        // Основная тема (упрощённая)
-        listOf(Note(8, 52, 5), Note(1, 40, 5), Note(15, 55, 2)), // E4, E3, G4 (плиньк)
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(3, 35, 2)),  // D4, D3, Малый барабан
-        listOf(Note(8, 52, 5), Note(1, 40, 5), Note(2, 33, 2)),  // E4, E3, Бас-барабан
-        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(5, 58, 2)),  // F4, F3, A#4 (колокольчик)
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(3, 35, 2)),  // D4, D3, Малый барабан
-        listOf(Note(8, 47, 5), Note(1, 35, 5), Note(2, 33, 2)),  // B3, B2, Бас-барабан
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(15, 57, 2)), // D4, D3, A4 (плиньк)
-        listOf(Note(8, 52, 5), Note(1, 40, 5), Note(3, 35, 2)),  // E4, E3, Малый барабан
-        // Припев (Never gonna give you up...)
-        listOf(Note(8, 55, 5), Note(1, 43, 5), Note(2, 33, 2), Note(5, 57, 5)),  // G4, G3, Бас-барабан, A4
-        listOf(Note(8, 57, 5), Note(1, 45, 5), Note(3, 35, 2), Note(15, 55, 5)), // A4, A3, Малый барабан, G4
-        listOf(Note(8, 55, 5), Note(1, 43, 5), Note(2, 33, 2)),  // G4, G3, Бас-барабан
-        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(3, 35, 2), Note(5, 58, 5)),  // F4, F3, Малый барабан, A#4
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2), Note(15, 57, 5)), // D4, D3, Бас-барабан, A4
-        listOf(Note(8, 52, 5), Note(1, 40, 5), Note(3, 35, 2)),  // E4, E3, Малый барабан
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2), Note(5, 55, 5))   // D4, D3, Бас-барабан, G4
+    // Тестовый лист для последовательного воспроизведения инструментов
+    private val InstrumentTest = listOf(
+        listOf(Note(0, 50, 10)),  // Пианино/Арфа
+        listOf(Note(1, 50, 10)),  // Бас-гитара
+        listOf(Note(2, 50, 10)),  // Бас-барабан
+        listOf(Note(3, 50, 10)),  // Малый барабан
+        listOf(Note(4, 50, 10)),  // Щелчки
+        listOf(Note(5, 50, 10)),  // Колокольчик
+        listOf(Note(6, 50, 10)),  // Флейта
+        listOf(Note(7, 50, 10)),  // Колокольчики
+        listOf(Note(8, 50, 10)),  // Гитара
+        listOf(Note(9, 50, 10)),  // Ксилофон
+        listOf(Note(10, 50, 10)), // Железный ксилофон
+        listOf(Note(11, 50, 10)), // Коровьи колокольчики
+        listOf(Note(12, 50, 10)), // Диджериду
+        listOf(Note(13, 50, 10)), // Электронный звук
+        listOf(Note(14, 50, 10)), // Банджо
+        listOf(Note(15, 50, 10))  // Плиньк
     )
 
     private var isPlaying = false
@@ -77,7 +67,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     private var currentGroupIndex = 0
     private var lastNoteTime: Long = 0
     private var accumulatedTicks: Int = 0
-    private var currentSong: List<List<Note>> = NeverGonnaGiveYouUp
+    private var currentSong: List<List<Note>> = InstrumentTest // Установим тестовый лист по умолчанию
 
     override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
         val packet = interceptablePacket.packet
@@ -91,12 +81,12 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
                 when {
                     args.contains("stop") -> {
                         stopPlaying()
-                        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aNever Gonna Give You Up stopped")
+                        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aInstrument Test stopped")
                     }
                     else -> {
                         isRepeating = args.contains("repeat")
                         startPlaying()
-                        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aStarting Never Gonna Give You Up${if (isRepeating) " with repeat" else " (once)"}")
+                        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aStarting Instrument Test${if (isRepeating) " with repeat" else " (once)"}")
                     }
                 }
             }
@@ -145,6 +135,9 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
                 isRelativeVolumeDisabled = false // Звук автоматически гаснет с расстоянием
             }
             session.serverBound(packet)
+
+            // Логирование для теста
+            session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing instrument: ${note.instrument}, identifier: $instrumentIdentifier")
         }
     }
 
@@ -160,7 +153,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
         isRepeating = false
         currentGroupIndex = 0
         accumulatedTicks = 0
-        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aNever Gonna Give You Up stopped")
+        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aInstrument Test stopped")
     }
 
     override fun onDisabled() {

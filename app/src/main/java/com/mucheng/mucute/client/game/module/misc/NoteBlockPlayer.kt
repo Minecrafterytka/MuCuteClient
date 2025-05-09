@@ -12,24 +12,38 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
 
     // Настройки
     private val playMusic by boolValue("play_music", true)
+    private val instrument by intValue("instrument", 0, 0..4) // 0=Harp, 1=Bass, 2=Snare, 3=Hat, 4=Bass Drum
 
     // Данные нот
     data class Note(val instrument: Byte, val key: Byte, val duration: Int)
 
     private val nokiaTune = listOf(
-        Note(0, 52, 10), // E4
-        Note(0, 50, 10), // D4
-        Note(0, 42, 5),  // F#3
-        Note(0, 44, 5),  // G#3
-        Note(0, 49, 10), // C#4
-        Note(0, 47, 10), // B3
-        Note(0, 38, 5),  // D3
-        Note(0, 40, 5),  // E3
-        Note(0, 47, 10), // B3
-        Note(0, 45, 10), // A3
-        Note(0, 37, 5),  // C#3
-        Note(0, 40, 5),  // E3
-        Note(0, 45, 10)  // A3
+        // Первая часть (основная тема)
+        Note(0, 52, 6), // E4
+        Note(0, 50, 6), // D4
+        Note(0, 42, 3), // F#3
+        Note(0, 44, 3), // G#3
+        Note(0, 49, 6), // C#4
+        Note(0, 47, 6), // B3
+        Note(0, 38, 3), // D3
+        Note(0, 40, 3), // E3
+        Note(0, 47, 6), // B3
+        Note(0, 45, 6), // A3
+        Note(0, 37, 3), // C#3
+        Note(0, 40, 3), // E3
+        Note(0, 45, 6), // A3
+        // Вторая часть (расширение мелодии)
+        Note(0, 52, 6), // E4
+        Note(0, 50, 6), // D4
+        Note(0, 42, 3), // F#3
+        Note(0, 44, 3), // G#3
+        Note(0, 49, 6), // C#4
+        Note(0, 47, 6), // B3
+        Note(0, 38, 3), // D3
+        Note(0, 40, 3), // E3
+        Note(0, 47, 6), // B3
+        Note(0, 45, 6), // A3
+        Note(0, 45, 6)  // A3 (финал)
     )
 
     private var isPlaying = false
@@ -53,7 +67,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
         // Проигрывание мелодии
         if (isEnabled && playMusic && isPlaying) {
             val currentTime = System.currentTimeMillis()
-            val tickDuration = 200L // 200 мс для снижения частоты пакетов
+            val tickDuration = 100L // 100 мс для более быстрого воспроизведения
             if (currentTime - lastNoteTime >= tickDuration) {
                 accumulatedTicks++
                 if (currentNoteIndex < nokiaTune.size) {
@@ -77,19 +91,25 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
 
         // Отправляем LevelSoundEventPacket для воспроизведения звука
         val packet = LevelSoundEventPacket().apply {
-            sound = SoundEvent.NOTE
+            sound = when (instrument) {
+                1 -> SoundEvent.NOTE_BASS
+                2 -> SoundEvent.NOTE_SNARE
+                3 -> SoundEvent.NOTE_HAT
+                4 -> SoundEvent.NOTE_BD
+                else -> SoundEvent.NOTE // Harp по умолчанию
+            }
             position = Vector3f.from(
                 session.localPlayer.vec3Position.x,
                 session.localPlayer.vec3Position.y,
                 session.localPlayer.vec3Position.z
             )
             extraData = key33 // Высота ноты (0–24)
-            identifier = ":" // Стандартный идентификатор
+            identifier = ":" // Работает, оставляем
             isBabySound = false
             isRelativeVolumeDisabled = false
         }
         session.serverBound(packet)
-        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing note: key=${note.key}, pitch=$key33")
+        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing note: key=${note.key}, pitch=$key33, instrument=$instrument")
     }
 
     private fun startPlaying() {
@@ -97,8 +117,8 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
         currentNoteIndex = 0
         accumulatedTicks = 0
         lastNoteTime = System.currentTimeMillis()
-        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aNokia Tune started")
         session.displayClientMessage("Player position: ${session.localPlayer.vec3Position}")
+        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aNokia Tune started")
     }
 
     private fun stopPlaying() {

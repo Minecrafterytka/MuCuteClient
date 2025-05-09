@@ -11,30 +11,32 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
 
     // Настройки
     private val playMusic by boolValue("play_music", true)
+    private val blockPositionType by stringValue("block_position", "below", listOf("below", "front")) // Под ногами или спереди
 
     // Данные нот
     data class Note(val instrument: Byte, val key: Byte, val duration: Int)
 
     private val nokiaTune = listOf(
-        Note(0, 64, 10), // E5
-        Note(0, 62, 10), // D5
-        Note(0, 54, 5),  // F#4
-        Note(0, 56, 5),  // G#4
-        Note(0, 61, 10), // C#5
-        Note(0, 59, 10), // B4
-        Note(0, 50, 5),  // D4
-        Note(0, 52, 5),  // E4
-        Note(0, 59, 10), // B4
-        Note(0, 57, 10), // A4
-        Note(0, 49, 5),  // C#4
-        Note(0, 52, 5),  // E4
-        Note(0, 57, 10)  // A4
+        Note(0, 52, 10), // E4
+        Note(0, 50, 10), // D4
+        Note(0, 42, 5),  // F#3
+        Note(0, 44, 5),  // G#3
+        Note(0, 49, 10), // C#4
+        Note(0, 47, 10), // B3
+        Note(0, 38, 5),  // D3
+        Note(0, 40, 5),  // E3
+        Note(0, 47, 10), // B3
+        Note(0, 45, 10), // A3
+        Note(0, 37, 5),  // C#3
+        Note(0, 40, 5),  // E3
+        Note(0, 45, 10)  // A3
     )
 
     private var isPlaying = false
     private var currentNoteIndex = 0
     private var lastNoteTime: Long = 0
     private var accumulatedTicks: Int = 0
+    private lateinit var blockPosition: Vector3i
 
     override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
         val packet = interceptablePacket.packet
@@ -52,7 +54,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
         // Проигрывание мелодии
         if (isEnabled && playMusic && isPlaying) {
             val currentTime = System.currentTimeMillis()
-            val tickDuration = 50L // 1 тик = 50 мс (20 тиков/сек)
+            val tickDuration = 150L // 150 мс для снижения частоты пакетов
             if (currentTime - lastNoteTime >= tickDuration) {
                 accumulatedTicks++
                 if (currentNoteIndex < nokiaTune.size) {
@@ -70,13 +72,23 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
         }
     }
 
-    private fun playNote(note: Note) {
-        // Позиция нотного блoka (чуть выше игрока)
+    private fun setBlockPosition() {
         val blockX = session.localPlayer.vec3Position.x.toInt()
-        val blockY = (session.localPlayer.vec3Position.y + 2.0f).toInt()
-        val blockZ = session.localPlayer.vec3Position.z.toInt()
-        val blockPosition = Vector3i.from(blockX, blockY, blockZ)
+        val blockY = if (blockPositionType == "below") {
+            (session.localPlayer.vec3Position.y - 1.0f).toInt() // Под ногами
+        } else {
+            session.localPlayer.vec3Position.y.toInt() // На уровне ног
+        }
+        val blockZ = if (blockPositionType == "front") {
+            (session.localPlayer.vec3Position.z + 1).toInt() // Спереди
+        } else {
+            session.localPlayer.vec3Position.z.toInt() // Под ногами
+        }
+        blockPosition = Vector3i.from(blockX, blockY, blockZ)
+        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Targeting note block at $blockPosition")
+    }
 
+    private fun playNote(note: Note) {
         // Высота ноты (key 33–57, преобразуем в 0–24)
         val key33 = (note.key - 33).coerceIn(0, 24)
 
@@ -91,6 +103,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     }
 
     private fun startPlaying() {
+        setBlockPosition() // Задаем позицию блока
         isPlaying = true
         currentNoteIndex = 0
         accumulatedTicks = 0

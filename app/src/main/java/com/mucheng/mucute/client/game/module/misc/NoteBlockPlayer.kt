@@ -53,7 +53,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
             if (message == ".playnote") {
                 interceptablePacket.intercept()
                 startPlaying()
-                session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aStarting Nokia Tune")
+                session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aStarting Bad Piggies Theme")
             }
         }
 
@@ -64,7 +64,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
             if (currentTime - lastNoteTime >= tickDuration) {
                 accumulatedTicks++
                 if (currentNoteIndex < nokiaTune.size) {
-                    val note = nokiaTune[currentNoteIndex]
+                    val note = badPiggies[currentNoteIndex]
                     if (accumulatedTicks >= note.duration) {
                         playNote(note)
                         currentNoteIndex++
@@ -105,14 +105,14 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
         accumulatedTicks = 0
         lastNoteTime = System.currentTimeMillis()
         session.displayClientMessage("Player position: ${session.localPlayer.vec3Position}")
-        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aNokia Tune started")
+        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aBad Piggies Theme started")
     }
 
     private fun stopPlaying() {
         isPlaying = false
         currentNoteIndex = 0
         accumulatedTicks = 0
-        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aNokia Tune stopped")
+        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aBad Piggies Theme stopped")
     }
 
     override fun onDisabled() {

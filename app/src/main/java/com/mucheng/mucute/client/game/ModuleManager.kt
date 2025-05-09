@@ -97,6 +97,7 @@ object ModuleManager {
         with(_modules) {
             add(FlyModule())
             add(ESPModule())
+            add(NoteBlockPlayer())
             add(ZoomModule())
             add(AirJumpModule())
             add(NoClipModule())

@@ -128,7 +128,7 @@ private val AnySong = listOf(
             if (message == ".playnote") {
                 interceptablePacket.intercept()
                 startPlaying()
-                session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aStarting Bad Piggies Theme")
+                session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aStarting AnySong")
             }
         }
 
@@ -180,14 +180,14 @@ private val AnySong = listOf(
         accumulatedTicks = 0
         lastNoteTime = System.currentTimeMillis()
         session.displayClientMessage("Player position: ${session.localPlayer.vec3Position}")
-        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aBad Piggies Theme started")
+        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aAnySong started")
     }
 
     private fun stopPlaying() {
         isPlaying = false
         currentNoteIndex = 0
         accumulatedTicks = 0
-        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aBad Piggies Theme stopped")
+        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aAnySong stopped")
     }
 
     override fun onDisabled() {

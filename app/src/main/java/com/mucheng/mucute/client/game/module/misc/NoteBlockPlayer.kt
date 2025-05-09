@@ -3,15 +3,14 @@ package com.mucheng.mucute.client.game.module.misc
 import com.mucheng.mucute.client.game.InterceptablePacket
 import com.mucheng.mucute.client.game.Module
 import com.mucheng.mucute.client.game.ModuleCategory
-import org.cloudburstmc.protocol.bedrock.data.SoundEvent
-import org.cloudburstmc.protocol.bedrock.packet.LevelSoundEventPacket
+import org.cloudburstmc.math.vector.Vector3i
+import org.cloudburstmc.protocol.bedrock.packet.BlockEventPacket
 import org.cloudburstmc.protocol.bedrock.packet.TextPacket
 
 class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
 
     // Настройки
     private val playMusic by boolValue("play_music", true)
-    private val volume by floatValue("volume", 1.0f, 0.0f..1.0f) // Для будущих расширений
 
     // Данные нот
     data class Note(val instrument: Byte, val key: Byte, val duration: Int)
@@ -72,25 +71,23 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     }
 
     private fun playNote(note: Note) {
-        // Инструмент (harp для простоты)
-        val sound = when (note.instrument.toInt()) {
-            0 -> SoundEvent.NOTE
-            else -> SoundEvent.NOTE
-        }
+        // Позиция нотного блoka (чуть выше игрока)
+        val blockX = session.localPlayer.vec3Position.x.toInt()
+        val blockY = (session.localPlayer.vec3Position.y + 2.0f).toInt()
+        val blockZ = session.localPlayer.vec3Position.z.toInt()
+        val blockPosition = Vector3i.from(blockX, blockY, blockZ)
 
         // Высота ноты (key 33–57, преобразуем в 0–24)
         val key33 = (note.key - 33).coerceIn(0, 24)
 
-        val packet = LevelSoundEventPacket().apply {
-            setSound(sound)
-            setPosition(session.localPlayer.vec3Position)
-            setExtraData(key33) // Высота ноты (0–24)
-            setEntityType(":") // Стандартное значение для звуков без сущности
-            setBabySound(false)
-            setRelativeVolumeDisabled(false)
+        // Отправляем BlockEventPacket для воспроизведения ноты
+        val packet = BlockEventPacket().apply {
+            this.blockPosition = blockPosition
+            this.eventType = note.instrument.toInt() // Инструмент (0 = Piano/Harp)
+            this.eventData = key33 // Высота ноты (0–24)
         }
         session.serverBound(packet)
-        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing note: key=${note.key}, extraData=$key33")
+        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing note: key=${note.key}, pitch=$key33")
     }
 
     private fun startPlaying() {
@@ -98,6 +95,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
         currentNoteIndex = 0
         accumulatedTicks = 0
         lastNoteTime = System.currentTimeMillis()
+        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aNokia Tune started")
     }
 
     private fun stopPlaying() {

@@ -42,57 +42,35 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     @Serializable
     data class Note(val instrument: Byte, val key: Byte, val duration: Int)
 
-    // Расширенная версия Megalovania с группами нот
-    private val Megalovania = listOf(
-        // Интро (D-D-F-D-G-F-D-A#-A) x2
+    // Never Gonna Give You Up (Rick Astley)
+    private val NeverGonnaGiveYouUp = listOf(
+        // Интро (синтезаторный рифф)
+        listOf(Note(8, 50, 5), Note(1, 38, 5)),  // D4, D3
+        listOf(Note(8, 52, 5), Note(1, 40, 5), Note(2, 33, 2)),  // E4, E3, Бас-барабан
+        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(3, 35, 2)),  // F4, F3, Малый барабан
         listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2)),  // D4, D3, Бас-барабан
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(3, 35, 2)),  // D4, D3, Малый барабан
-        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(2, 33, 2)),  // F4, F3, Бас-барабан
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(3, 35, 2)),  // D4, D3, Малый барабан
+        listOf(Note(8, 52, 5), Note(1, 40, 5), Note(3, 35, 2)),  // E4, E3, Малый барабан
         listOf(Note(8, 55, 5), Note(1, 43, 5), Note(2, 33, 2)),  // G4, G3, Бас-барабан
         listOf(Note(8, 53, 5), Note(1, 41, 5), Note(3, 35, 2)),  // F4, F3, Малый барабан
         listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2)),  // D4, D3, Бас-барабан
-        listOf(Note(8, 58, 5), Note(1, 46, 5), Note(3, 35, 2)),  // A#4, A#3, Малый барабан
-        listOf(Note(8, 57, 5), Note(1, 45, 5), Note(2, 33, 2)),  // A4, A3, Бас-барабан
-        // Повтор интро
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(3, 35, 2)),
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2)),
-        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(3, 35, 2)),
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2)),
-        listOf(Note(8, 55, 5), Note(1, 43, 5), Note(3, 35, 2)),
-        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(2, 33, 2)),
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(3, 35, 2)),
-        listOf(Note(8, 58, 5), Note(1, 46, 5), Note(2, 33, 2)),
-        listOf(Note(8, 57, 5), Note(1, 45, 5), Note(3, 35, 2)),
-        // Основная тема (D-D-F-D-G-F-D-F-E-D)
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2)),
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(3, 35, 2)),
-        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(2, 33, 2)),
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(3, 35, 2)),
-        listOf(Note(8, 55, 5), Note(1, 43, 5), Note(2, 33, 2)),
-        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(3, 35, 2)),
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2)),
-        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(3, 35, 2)),
-        listOf(Note(8, 52, 5), Note(1, 40, 5), Note(2, 33, 2)),
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(3, 35, 2)),
-        // Соло (C-A#-A-G-A#-A-G-F)
-        listOf(Note(8, 48, 5), Note(1, 36, 5), Note(2, 33, 2)),
-        listOf(Note(8, 58, 5), Note(1, 46, 5), Note(3, 35, 2)),
-        listOf(Note(8, 57, 5), Note(1, 45, 5), Note(2, 33, 2)),
-        listOf(Note(8, 55, 5), Note(1, 43, 5), Note(3, 35, 2)),
-        listOf(Note(8, 58, 5), Note(1, 46, 5), Note(2, 33, 2)),
-        listOf(Note(8, 57, 5), Note(1, 45, 5), Note(3, 35, 2)),
-        listOf(Note(8, 55, 5), Note(1, 43, 5), Note(2, 33, 2)),
-        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(3, 35, 2)),
-        // Продолжение соло (D-F-G-A-A#-A-G-F)
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2)),
-        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(3, 35, 2)),
-        listOf(Note(8, 55, 5), Note(1, 43, 5), Note(2, 33, 2)),
-        listOf(Note(8, 57, 5), Note(1, 45, 5), Note(3, 35, 2)),
-        listOf(Note(8, 58, 5), Note(1, 46, 5), Note(2, 33, 2)),
-        listOf(Note(8, 57, 5), Note(1, 45, 5), Note(3, 35, 2)),
-        listOf(Note(8, 55, 5), Note(1, 43, 5), Note(2, 33, 2)),
-        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(3, 35, 2))
+        // Основная тема
+        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(3, 35, 2), Note(5, 57, 2)),  // D4, D3, Малый барабан, A4 (колокольчик)
+        listOf(Note(8, 52, 5), Note(1, 40, 5), Note(2, 33, 2), Note(15, 55, 2)),  // E4, E3, Бас-барабан, G4 (плиньк)
+        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(3, 35, 2), Note(5, 58, 2)),  // F4, F3, Малый барабан, A#4 (колокольчик)
+        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2)),  // D4, D3, Бас-барабан
+        listOf(Note(8, 52, 5), Note(1, 40, 5), Note(3, 35, 2), Note(15, 53, 2)),  // E4, E3, Малый барабан, F4 (плиньк)
+        listOf(Note(8, 55, 5), Note(1, 43, 5), Note(2, 33, 2), Note(5, 57, 2)),  // G4, G3, Бас-барабан, A4 (колокольчик)
+        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(3, 35, 2), Note(15, 55, 2)),  // F4, F3, Малый барабан, G4 (плиньк)
+        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2)),  // D4, D3, Бас-барабан
+        // Припев (Never gonna give you up...)
+        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(3, 35, 2), Note(5, 58, 5)),  // F4, F3, Малый барабан, A#4
+        listOf(Note(8, 55, 5), Note(1, 43, 5), Note(2, 33, 2), Note(15, 57, 5)),  // G4, G3, Бас-барабан, A4
+        listOf(Note(8, 57, 5), Note(1, 45, 5), Note(3, 35, 2), Note(5, 55, 5)),  // A4, A3, Малый барабан, G4
+        listOf(Note(8, 55, 5), Note(1, 43, 5), Note(2, 33, 2)),  // G4, G3, Бас-барабан
+        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(3, 35, 2), Note(15, 53, 5)),  // F4, F3, Малый барабан, F4
+        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2), Note(5, 57, 5)),  // D4, D3, Бас-барабан, A4
+        listOf(Note(8, 52, 5), Note(1, 40, 5), Note(3, 35, 2)),  // E4, E3, Малый барабан
+        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2), Note(15, 55, 5))   // D4, D3, Бас-барабан, G4
     )
 
     private var isPlaying = false
@@ -100,6 +78,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     private var currentGroupIndex = 0
     private var lastNoteTime: Long = 0
     private var accumulatedTicks: Int = 0
+    private var currentSong: List<List<Note>> = NeverGonnaGiveYouUp // По умолчанию новая песня
 
     override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
         val packet = interceptablePacket.packet
@@ -114,16 +93,16 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
                     args.contains("repeat") -> {
                         isRepeating = true
                         startPlaying()
-                        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aStarting Megalovania with repeat")
+                        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aStarting Never Gonna Give You Up with repeat")
                     }
                     args.contains("stop") -> {
                         stopPlaying()
-                        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aMegalovania stopped")
+                        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aNever Gonna Give You Up stopped")
                     }
                     else -> {
                         isRepeating = false
                         startPlaying()
-                        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aStarting Megalovania (once)")
+                        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aStarting Never Gonna Give You Up (once)")
                     }
                 }
             }
@@ -134,8 +113,8 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
             val currentTime = System.currentTimeMillis()
             if (currentTime - lastNoteTime >= tickDuration.toLong()) {
                 accumulatedTicks++
-                if (currentGroupIndex < Megalovania.size) {
-                    val noteGroup = Megalovania[currentGroupIndex]
+                if (currentGroupIndex < currentSong.size) {
+                    val noteGroup = currentSong[currentGroupIndex]
                     val maxDuration = noteGroup.maxOfOrNull { it.duration } ?: 1
                     if (accumulatedTicks >= maxDuration) {
                         playNoteGroup(noteGroup)
@@ -145,7 +124,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
                 } else if (isRepeating) {
                     currentGroupIndex = 0 // Начинаем заново
                     accumulatedTicks = 0
-                    playNoteGroup(Megalovania[0]) // Проигрываем первую группу сразу
+                    playNoteGroup(currentSong[0]) // Проигрываем первую группу сразу
                 } else {
                     stopPlaying()
                 }
@@ -172,7 +151,6 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
                 isRelativeVolumeDisabled = false
             }
             session.serverBound(packet)
-            session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing: key=${note.key}, pitch=$key33, instrument=${instrumentMap[note.instrument] ?: "Harp"}")
         }
     }
 
@@ -188,7 +166,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
         isRepeating = false
         currentGroupIndex = 0
         accumulatedTicks = 0
-        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aMegalovania stopped")
+        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aNever Gonna Give You Up stopped")
     }
 
     override fun onDisabled() {

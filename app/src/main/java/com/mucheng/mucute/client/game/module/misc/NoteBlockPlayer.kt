@@ -42,35 +42,34 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     @Serializable
     data class Note(val instrument: Byte, val key: Byte, val duration: Int)
 
-    // Never Gonna Give You Up (Rick Astley)
+    // Переработанная версия Never Gonna Give You Up (Rick Astley)
     private val NeverGonnaGiveYouUp = listOf(
-        // Интро (синтезаторный рифф)
-        listOf(Note(8, 50, 5), Note(1, 38, 5)),  // D4, D3
+        // Интро (E-D-E-D-E-B-D-B)
         listOf(Note(8, 52, 5), Note(1, 40, 5), Note(2, 33, 2)),  // E4, E3, Бас-барабан
-        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(3, 35, 2)),  // F4, F3, Малый барабан
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2)),  // D4, D3, Бас-барабан
+        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(3, 35, 2)),  // D4, D3, Малый барабан
+        listOf(Note(8, 52, 5), Note(1, 40, 5), Note(2, 33, 2)),  // E4, E3, Бас-барабан
+        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(3, 35, 2)),  // D4, D3, Малый барабан
+        listOf(Note(8, 52, 5), Note(1, 40, 5), Note(2, 33, 2)),  // E4, E3, Бас-барабан
+        listOf(Note(8, 47, 5), Note(1, 35, 5), Note(5, 57, 2)),  // B3, B2, Колокольчик
+        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(3, 35, 2)),  // D4, D3, Малый барабан
+        listOf(Note(8, 47, 5), Note(1, 35, 5), Note(2, 33, 2)),  // B3, B2, Бас-барабан
+        // Основная тема (упрощённая)
+        listOf(Note(8, 52, 5), Note(1, 40, 5), Note(15, 55, 2)), // E4, E3, G4 (плиньк)
+        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(3, 35, 2)),  // D4, D3, Малый барабан
+        listOf(Note(8, 52, 5), Note(1, 40, 5), Note(2, 33, 2)),  // E4, E3, Бас-барабан
+        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(5, 58, 2)),  // F4, F3, A#4 (колокольчик)
+        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(3, 35, 2)),  // D4, D3, Малый барабан
+        listOf(Note(8, 47, 5), Note(1, 35, 5), Note(2, 33, 2)),  // B3, B2, Бас-барабан
+        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(15, 57, 2)), // D4, D3, A4 (плиньк)
         listOf(Note(8, 52, 5), Note(1, 40, 5), Note(3, 35, 2)),  // E4, E3, Малый барабан
-        listOf(Note(8, 55, 5), Note(1, 43, 5), Note(2, 33, 2)),  // G4, G3, Бас-барабан
-        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(3, 35, 2)),  // F4, F3, Малый барабан
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2)),  // D4, D3, Бас-барабан
-        // Основная тема
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(3, 35, 2), Note(5, 57, 2)),  // D4, D3, Малый барабан, A4 (колокольчик)
-        listOf(Note(8, 52, 5), Note(1, 40, 5), Note(2, 33, 2), Note(15, 55, 2)),  // E4, E3, Бас-барабан, G4 (плиньк)
-        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(3, 35, 2), Note(5, 58, 2)),  // F4, F3, Малый барабан, A#4 (колокольчик)
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2)),  // D4, D3, Бас-барабан
-        listOf(Note(8, 52, 5), Note(1, 40, 5), Note(3, 35, 2), Note(15, 53, 2)),  // E4, E3, Малый барабан, F4 (плиньк)
-        listOf(Note(8, 55, 5), Note(1, 43, 5), Note(2, 33, 2), Note(5, 57, 2)),  // G4, G3, Бас-барабан, A4 (колокольчик)
-        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(3, 35, 2), Note(15, 55, 2)),  // F4, F3, Малый барабан, G4 (плиньк)
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2)),  // D4, D3, Бас-барабан
         // Припев (Never gonna give you up...)
-        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(3, 35, 2), Note(5, 58, 5)),  // F4, F3, Малый барабан, A#4
-        listOf(Note(8, 55, 5), Note(1, 43, 5), Note(2, 33, 2), Note(15, 57, 5)),  // G4, G3, Бас-барабан, A4
-        listOf(Note(8, 57, 5), Note(1, 45, 5), Note(3, 35, 2), Note(5, 55, 5)),  // A4, A3, Малый барабан, G4
+        listOf(Note(8, 55, 5), Note(1, 43, 5), Note(2, 33, 2), Note(5, 57, 5)),  // G4, G3, Бас-барабан, A4
+        listOf(Note(8, 57, 5), Note(1, 45, 5), Note(3, 35, 2), Note(15, 55, 5)), // A4, A3, Малый барабан, G4
         listOf(Note(8, 55, 5), Note(1, 43, 5), Note(2, 33, 2)),  // G4, G3, Бас-барабан
-        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(3, 35, 2), Note(15, 53, 5)),  // F4, F3, Малый барабан, F4
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2), Note(5, 57, 5)),  // D4, D3, Бас-барабан, A4
+        listOf(Note(8, 53, 5), Note(1, 41, 5), Note(3, 35, 2), Note(5, 58, 5)),  // F4, F3, Малый барабан, A#4
+        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2), Note(15, 57, 5)), // D4, D3, Бас-барабан, A4
         listOf(Note(8, 52, 5), Note(1, 40, 5), Note(3, 35, 2)),  // E4, E3, Малый барабан
-        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2), Note(15, 55, 5))   // D4, D3, Бас-барабан, G4
+        listOf(Note(8, 50, 5), Note(1, 38, 5), Note(2, 33, 2), Note(5, 55, 5))   // D4, D3, Бас-барабан, G4
     )
 
     private var isPlaying = false
@@ -78,7 +77,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     private var currentGroupIndex = 0
     private var lastNoteTime: Long = 0
     private var accumulatedTicks: Int = 0
-    private var currentSong: List<List<Note>> = NeverGonnaGiveYouUp // По умолчанию новая песня
+    private var currentSong: List<List<Note>> = NeverGonnaGiveYouUp
 
     override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
         val packet = interceptablePacket.packet
@@ -88,21 +87,16 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
             val message = packet.message.trim()
             if (message.startsWith(".playnote")) {
                 interceptablePacket.intercept()
-                val args = message.split(" ").drop(1) // Убираем .playnote и берем аргументы
+                val args = message.split(" ").drop(1) // Убираем .playnote и берём аргументы
                 when {
-                    args.contains("repeat") -> {
-                        isRepeating = true
-                        startPlaying()
-                        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aStarting Never Gonna Give You Up with repeat")
-                    }
                     args.contains("stop") -> {
                         stopPlaying()
                         session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aNever Gonna Give You Up stopped")
                     }
                     else -> {
-                        isRepeating = false
+                        isRepeating = args.contains("repeat")
                         startPlaying()
-                        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aStarting Never Gonna Give You Up (once)")
+                        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aStarting Never Gonna Give You Up${if (isRepeating) " with repeat" else " (once)"}")
                     }
                 }
             }
@@ -124,7 +118,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
                 } else if (isRepeating) {
                     currentGroupIndex = 0 // Начинаем заново
                     accumulatedTicks = 0
-                    playNoteGroup(currentSong[0]) // Проигрываем первую группу сразу
+                    playNoteGroup(currentSong[0])
                 } else {
                     stopPlaying()
                 }
@@ -148,7 +142,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
                 extraData = key33
                 identifier = instrumentIdentifier
                 isBabySound = false
-                isRelativeVolumeDisabled = false
+                isRelativeVolumeDisabled = false // Звук автоматически гаснет с расстоянием
             }
             session.serverBound(packet)
         }

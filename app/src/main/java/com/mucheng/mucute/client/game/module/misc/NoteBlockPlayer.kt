@@ -99,7 +99,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     private fun playNoteGroup(noteGroup: List<Note>) {
         noteGroup.forEach { note ->
             val packet = PlaySoundPacket().apply {
-                soundName = note.soundName
+                name = note.soundName // Исправлено с soundName на name
                 position = Vector3f.from(
                     session.localPlayer.vec3Position.x,
                     session.localPlayer.vec3Position.y,

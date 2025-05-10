@@ -121,20 +121,31 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
             val instrument = note.instrument.coerceIn(0, 15)
             val pitch = note.pitch.coerceIn(0, 15) // Ограничиваем высоту 0-15 (F#3-F#4)
 
-            val packet = BlockEventPacket().apply {
-                blockPosition = Vector3i.from(
-                    session.localPlayer.vec3Position.x.toInt(),
-                    session.localPlayer.vec3Position.y.toInt(), // Позиция игрока
-                    session.localPlayer.vec3Position.z.toInt()
-                )
-                eventType = instrument // Инструмент (0-15)
-                eventData = pitch // Высота тона
-            }
-            session.serverBound(packet)
+            // Пробуем две позиции: позиция игрока и позиция под игроком
+            val playerPos = Vector3i.from(
+                session.localPlayer.vec3Position.x.toInt(),
+                session.localPlayer.vec3Position.y.toInt(),
+                session.localPlayer.vec3Position.z.toInt()
+            )
+            val belowPos = Vector3i.from(
+                session.localPlayer.vec3Position.x.toInt(),
+                session.localPlayer.vec3Position.y.toInt() - 1,
+                session.localPlayer.vec3Position.z.toInt()
+            )
 
-            // Расширенное логирование для отладки
-            val instrumentName = instrumentNames[instrument] ?: "Неизвестный"
-            session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing: $instrumentName, pitch: $pitch, position: ${packet.blockPosition}, eventType: ${packet.eventType}, eventData: ${packet.eventData}")
+            // Отправляем пакет для обеих позиций
+            listOf(playerPos, belowPos).forEach { pos ->
+                val packet = BlockEventPacket().apply {
+                    blockPosition = pos
+                    eventType = instrument // Инструмент (0-15)
+                    eventData = pitch // Высота тона
+                }
+                session.serverBound(packet)
+
+                // Расширенное логирование для отладки
+                val instrumentName = instrumentNames[instrument] ?: "Неизвестный"
+                session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing: $instrumentName, pitch: $pitch, position: $pos, eventType: ${packet.eventType}, eventData: ${packet.eventData}")
+            }
         }
     }
 

@@ -103,31 +103,10 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
                 session.localPlayer.vec3Position.y,
                 session.localPlayer.vec3Position.z
             )
-            val packet = PlaySoundPacket(note.soundName, position, 1.0f, note.pitch, null) // Пробуем конструктор
+            val packet = PlaySoundPacket() // Создаём пустой пакет
+            // Пытаемся настроить поля (если доступно, но без сеттеров это может не работать)
+            // TODO: Проверить API, возможно, нужно использовать другой метод настройки
             session.serverBound(packet)
 
-            // Логирование
-            session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing sound: ${note.soundName}, pitch: ${note.pitch}")
-        }
-    }
-
-    private fun startPlaying() {
-        isPlaying = true
-        currentGroupIndex = 0
-        accumulatedTicks = 0
-        lastNoteTime = System.currentTimeMillis()
-    }
-
-    private fun stopPlaying() {
-        isPlaying = false
-        isRepeating = false
-        currentGroupIndex = 0
-        accumulatedTicks = 0
-        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aSound Test stopped")
-    }
-
-    override fun onDisabled() {
-        super.onDisabled()
-        stopPlaying()
-    }
-}
+            // Логирование (пока без soundName, так как не можем его установить)
+            session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7

@@ -187,8 +187,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
             ))
             packet.setVolume(1.0f)
             packet.setPitch(note.pitch)
-            session.serverBound(packet)
-            session.clientBound(packet)
+            session.serverBound(packet) // Оставляем только serverBound
 
             // Отладка
             session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing: ${note.soundName}, pitch=${note.pitch}")

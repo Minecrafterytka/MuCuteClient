@@ -65,7 +65,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
                     else -> {
                         isRepeating = args.contains("repeat")
                         startPlaying()
-                        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aStarting Sound Test${if (isRepeating) " with repeat" else " (once)"}")
+                        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aStarting Sound Test${if (isRepeating) \" with repeat\" else \" (once)\"}")
                     }
                 }
             }
@@ -98,15 +98,41 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
 
     private fun playNoteGroup(noteGroup: List<Note>) {
         noteGroup.forEach { note ->
-            val position = Vector3f.from(
-                session.localPlayer.vec3Position.x,
-                session.localPlayer.vec3Position.y,
-                session.localPlayer.vec3Position.z
-            )
-            val packet = PlaySoundPacket() // Создаём пустой пакет
-            // Пытаемся настроить поля (если доступно, но без сеттеров это может не работать)
-            // TODO: Проверить API, возможно, нужно использовать другой метод настройки
+            val packet = PlaySoundPacket().apply {
+                // Используем прямое присваивание, если поля доступны
+                name = note.soundName
+                position = Vector3f.from(
+                    session.localPlayer.vec3Position.x,
+                    session.localPlayer.vec3Position.y,
+                    session.localPlayer.vec3Position.z
+                )
+                volume = 1.0f
+                pitch = note.pitch
+            }
             session.serverBound(packet)
 
-            // Логирование (пока без soundName, так как не можем его установить)
-            session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7
+            // Логирование
+            session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing sound: ${note.soundName}, pitch: ${note.pitch}")
+        }
+    }
+
+    private fun startPlaying() {
+        isPlaying = true
+        currentGroupIndex = 0
+        accumulatedTicks = 0
+        lastNoteTime = System.currentTimeMillis()
+    }
+
+    private fun stopPlaying() {
+        isPlaying = false
+        isRepeating = false
+        currentGroupIndex = 0
+        accumulatedTicks = 0
+        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aSound Test stopped")
+    }
+
+    override fun onDisabled() {
+        super.onDisabled()
+        stopPlaying()
+    }
+}

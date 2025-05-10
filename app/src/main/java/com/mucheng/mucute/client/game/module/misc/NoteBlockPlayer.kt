@@ -98,16 +98,15 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
 
     private fun playNoteGroup(noteGroup: List<Note>) {
         noteGroup.forEach { note ->
-            val packet = PlaySoundPacket().apply {
-                name = note.soundName // Исправлено с soundName на name
-                position = Vector3f.from(
-                    session.localPlayer.vec3Position.x,
-                    session.localPlayer.vec3Position.y,
-                    session.localPlayer.vec3Position.z
-                )
-                volume = 1.0f
-                pitch = note.pitch // Пробуем менять высоту (1.0f — оригинальная высота)
-            }
+            val packet = PlaySoundPacket()
+            packet.setName(note.soundName) // Используем setName вместо прямого присваивания
+            packet.setPosition(Vector3f.from(
+                session.localPlayer.vec3Position.x,
+                session.localPlayer.vec3Position.y,
+                session.localPlayer.vec3Position.z
+            ))
+            packet.setVolume(1.0f)
+            packet.setPitch(note.pitch) // Пробуем менять высоту (1.0f — оригинальная высота)
             session.serverBound(packet)
 
             // Логирование

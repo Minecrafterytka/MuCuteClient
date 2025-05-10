@@ -21,24 +21,11 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     @Serializable
     data class Note(val soundName: String, val pitch: Float, val duration: Int)
 
-    // Тестовый лист для экспериментов с PlaySoundPacket
+    // Тестовый лист с упрощёнными звуками
     private val SoundTest = listOf(
-        listOf(Note("block.note_block.harp", 1.0f, 10)),
-        listOf(Note("block.note_block.bass", 1.0f, 10)),
-        listOf(Note("block.note_block.basedrum", 1.0f, 10)),
-        listOf(Note("block.note_block.snare", 1.0f, 10)),
-        listOf(Note("block.note_block.hat", 1.0f, 10)),
-        listOf(Note("block.note_block.bell", 1.0f, 10)),
-        listOf(Note("block.note_block.flute", 1.0f, 10)),
-        listOf(Note("block.note_block.chime", 1.0f, 10)),
-        listOf(Note("block.note_block.guitar", 1.0f, 10)),
-        listOf(Note("block.note_block.xylophone", 1.0f, 10)),
-        listOf(Note("block.note_block.iron_xylophone", 1.0f, 10)),
-        listOf(Note("block.note_block.cow_bell", 1.0f, 10)),
-        listOf(Note("block.note_block.didgeridoo", 1.0f, 10)),
-        listOf(Note("block.note_block.bit", 1.0f, 10)),
-        listOf(Note("block.note_block.banjo", 1.0f, 10)),
-        listOf(Note("block.note_block.pling", 1.0f, 10))
+        listOf(Note("block.note_block.harp", 1.0f, 10)), // Проверяем арфу
+        listOf(Note("block.note_block.bass", 1.0f, 10)), // Проверяем бас
+        listOf(Note("block.note_block.bell", 1.0f, 10))  // Проверяем колокол
     )
 
     private var isPlaying = false
@@ -100,7 +87,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     private fun playNoteGroup(noteGroup: List<Note>) {
         noteGroup.forEach { note ->
             val packet = PlaySoundPacket()
-            packet.setSound(note.soundName) // Используем сеттер
+            packet.setSound(note.soundName)
             packet.setPosition(Vector3f.from(
                 session.localPlayer.vec3Position.x,
                 session.localPlayer.vec3Position.y,
@@ -110,8 +97,8 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
             packet.setPitch(note.pitch)
             session.serverBound(packet)
 
-            // Логирование
-            session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing sound: ${note.soundName}, pitch: ${note.pitch}")
+            // Отладка: подтверждаем отправку пакета
+            session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Sent packet: sound=${note.soundName}, pitch=${note.pitch}, pos=${session.localPlayer.vec3Position}")
         }
     }
 

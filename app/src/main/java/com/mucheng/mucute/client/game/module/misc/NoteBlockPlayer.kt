@@ -4,8 +4,7 @@ import com.mucheng.mucute.client.game.InterceptablePacket
 import com.mucheng.mucute.client.game.Module
 import com.mucheng.mucute.client.game.ModuleCategory
 import org.cloudburstmc.math.vector.Vector3f
-import org.cloudburstmc.protocol.bedrock.data.SoundEvent
-import org.cloudburstmc.protocol.bedrock.packet.LevelSoundEventPacket
+import org.cloudburstmc.protocol.bedrock.packet.PlaySoundPacket
 import org.cloudburstmc.protocol.bedrock.packet.TextPacket
 import kotlinx.serialization.Serializable
 
@@ -20,15 +19,26 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     data class Song(val name: String, val tempo: Int, val notes: List<List<Note>>)
 
     @Serializable
-    data class Note(val pitch: Int, val duration: Int)
+    data class Note(val soundName: String, val pitch: Float, val duration: Int)
 
-    // Тестовый лист (просто для проверки пианино/арфы)
+    // Тестовый лист для экспериментов с PlaySoundPacket
     private val SoundTest = listOf(
-        listOf(Note(12, 10)), // C5
-        listOf(Note(14, 10)), // D5
-        listOf(Note(16, 10)), // E5
-        listOf(Note(17, 10)), // F5
-        listOf(Note(19, 10))  // G5
+        listOf(Note("block.note_block.harp", 1.0f, 10)),
+        listOf(Note("block.note_block.bass", 1.0f, 10)),
+        listOf(Note("block.note_block.basedrum", 1.0f, 10)),
+        listOf(Note("block.note_block.snare", 1.0f, 10)),
+        listOf(Note("block.note_block.hat", 1.0f, 10)),
+        listOf(Note("block.note_block.bell", 1.0f, 10)),
+        listOf(Note("block.note_block.flute", 1.0f, 10)),
+        listOf(Note("block.note_block.chime", 1.0f, 10)),
+        listOf(Note("block.note_block.guitar", 1.0f, 10)),
+        listOf(Note("block.note_block.xylophone", 1.0f, 10)),
+        listOf(Note("block.note_block.iron_xylophone", 1.0f, 10)),
+        listOf(Note("block.note_block.cow_bell", 1.0f, 10)),
+        listOf(Note("block.note_block.didgeridoo", 1.0f, 10)),
+        listOf(Note("block.note_block.bit", 1.0f, 10)),
+        listOf(Note("block.note_block.banjo", 1.0f, 10)),
+        listOf(Note("block.note_block.pling", 1.0f, 10))
     )
 
     private var isPlaying = false
@@ -89,24 +99,19 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
 
     private fun playNoteGroup(noteGroup: List<Note>) {
         noteGroup.forEach { note ->
-            val pitch = note.pitch.coerceIn(0, 24) // Ограничиваем высоту 0-24
-
-            val packet = LevelSoundEventPacket().apply {
-                sound = SoundEvent.NOTE
-                position = Vector3f.from(
-                    session.localPlayer.vec3Position.x,
-                    session.localPlayer.vec3Position.y,
-                    session.localPlayer.vec3Position.z
-                )
-                extraData = pitch
-                identifier = "" // Пустой identifier, так как он не влияет
-                isBabySound = false
-                isRelativeVolumeDisabled = false
-            }
+            val packet = PlaySoundPacket()
+            packet.setSound(note.soundName) // Используем сеттер
+            packet.setPosition(Vector3f.from(
+                session.localPlayer.vec3Position.x,
+                session.localPlayer.vec3Position.y,
+                session.localPlayer.vec3Position.z
+            ))
+            packet.setVolume(1.0f)
+            packet.setPitch(note.pitch)
             session.serverBound(packet)
 
             // Логирование
-            session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing pitch: $pitch")
+            session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing sound: ${note.soundName}, pitch: ${note.pitch}")
         }
     }
 

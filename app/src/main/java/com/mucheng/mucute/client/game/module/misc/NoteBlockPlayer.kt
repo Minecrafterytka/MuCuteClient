@@ -3,9 +3,8 @@ package com.mucheng.mucute.client.game.module.misc
 import com.mucheng.mucute.client.game.InterceptablePacket
 import com.mucheng.mucute.client.game.Module
 import com.mucheng.mucute.client.game.ModuleCategory
-import org.cloudburstmc.math.vector.Vector3f
-import org.cloudburstmc.protocol.bedrock.data.SoundEvent
-import org.cloudburstmc.protocol.bedrock.packet.LevelSoundEventPacket
+import org.cloudburstmc.math.vector.Vector3i
+import org.cloudburstmc.protocol.bedrock.packet.BlockEventPacket
 import org.cloudburstmc.protocol.bedrock.packet.TextPacket
 import kotlinx.serialization.Serializable
 
@@ -13,26 +12,26 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
 
     // Настройки
     private val playMusic by boolValue("play_music", true)
-    private val tickDuration by intValue("tickDuration", 50, 10..500) // Настраиваемый темп (50 мс по умолчанию)
+    private val tickDuration by intValue("tickDuration", 50, 10..500) // Темп для теста
 
-    // Карта инструментов
-    private val instrumentMap = mapOf<Byte, String>(
-        0.toByte() to ":",                          // 0: Пианино/Арфа
-        1.toByte() to "minecraft:planks",           // 1: Бас-гитара
-        2.toByte() to "minecraft:stone",            // 2: Бас-барабан
-        3.toByte() to "minecraft:sand",             // 3: Малый барабан
-        4.toByte() to "minecraft:glass",            // 4: Щелчки
-        5.toByte() to "minecraft:gold_block",       // 5: Колокольчик
-        6.toByte() to "minecraft:clay",             // 6: Флейта
-        7.toByte() to "minecraft:packed_ice",       // 7: Колокольчики
-        8.toByte() to "minecraft:wool",             // 8: Гитара
-        9.toByte() to "minecraft:bone_block",       // 9: Ксилофон
-        10.toByte() to "minecraft:iron_block",      // 10: Железный ксилофон
-        11.toByte() to "minecraft:soul_sand",       // 11: Коровьи колокольчики
-        12.toByte() to "minecraft:pumpkin",         // 12: Диджериду
-        13.toByte() to "minecraft:emerald_block",   // 13: Электронный звук
-        14.toByte() to "minecraft:hay_block",       // 14: Банджо
-        15.toByte() to "minecraft:glowstone"        // 15: Плиньк
+    // Названия инструментов для логов
+    private val instrumentNames = mapOf<Int, String>(
+        0 to "Пианино/Арфа",
+        1 to "Бас-барабан",
+        2 to "Палочки",
+        3 to "Малый барабан",
+        4 to "Бас",
+        5 to "Колокольчик",
+        6 to "Флейта",
+        7 to "Колокольчики",
+        8 to "Гитара",
+        9 to "Ксилофон",
+        10 to "Железный ксилофон",
+        11 to "Коровьи колокольчики",
+        12 to "Диджериду",
+        13 to "Электронный звук",
+        14 to "Банджо",
+        15 to "Плиньк"
     )
 
     // Данные нот
@@ -40,26 +39,26 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     data class Song(val name: String, val tempo: Int, val notes: List<List<Note>>)
 
     @Serializable
-    data class Note(val instrument: Byte, val key: Byte, val duration: Int)
+    data class Note(val instrument: Int, val pitch: Int, val duration: Int)
 
-    // Тестовый лист для последовательного воспроизведения инструментов
+    // Тестовый лист для проверки всех 16 инструментов с несколькими нотами
     private val InstrumentTest = listOf(
-        listOf(Note(0, 50, 10)),  // Пианино/Арфа
-        listOf(Note(1, 50, 10)),  // Бас-гитара
-        listOf(Note(2, 50, 10)),  // Бас-барабан
-        listOf(Note(3, 50, 10)),  // Малый барабан
-        listOf(Note(4, 50, 10)),  // Щелчки
-        listOf(Note(5, 50, 10)),  // Колокольчик
-        listOf(Note(6, 50, 10)),  // Флейта
-        listOf(Note(7, 50, 10)),  // Колокольчики
-        listOf(Note(8, 50, 10)),  // Гитара
-        listOf(Note(9, 50, 10)),  // Ксилофон
-        listOf(Note(10, 50, 10)), // Железный ксилофон
-        listOf(Note(11, 50, 10)), // Коровьи колокольчики
-        listOf(Note(12, 50, 10)), // Диджериду
-        listOf(Note(13, 50, 10)), // Электронный звук
-        listOf(Note(14, 50, 10)), // Банджо
-        listOf(Note(15, 50, 10))  // Плиньк
+        listOf(Note(0, 12, 5), Note(0, 15, 5)),  // Пианино/Арфа (F#4, A4)
+        listOf(Note(1, 12, 5), Note(1, 15, 5)),  // Бас-барабан
+        listOf(Note(2, 12, 5), Note(2, 15, 5)),  // Палочки
+        listOf(Note(3, 12, 5), Note(3, 15, 5)),  // Малый барабан
+        listOf(Note(4, 12, 5), Note(4, 15, 5)),  // Бас
+        listOf(Note(5, 12, 5), Note(5, 15, 5)),  // Колокольчик
+        listOf(Note(6, 12, 5), Note(6, 15, 5)),  // Флейта
+        listOf(Note(7, 12, 5), Note(7, 15, 5)),  // Колокольчики
+        listOf(Note(8, 12, 5), Note(8, 15, 5)),  // Гитара
+        listOf(Note(9, 12, 5), Note(9, 15, 5)),  // Ксилофон
+        listOf(Note(10, 12, 5), Note(10, 15, 5)), // Железный ксилофон
+        listOf(Note(11, 12, 5), Note(11, 15, 5)), // Коровьи колокольчики
+        listOf(Note(12, 12, 5), Note(12, 15, 5)), // Диджериду
+        listOf(Note(13, 12, 5), Note(13, 15, 5)), // Электронный звук
+        listOf(Note(14, 12, 5), Note(14, 15, 5)), // Банджо
+        listOf(Note(15, 12, 5), Note(15, 15, 5))  // Плиньк
     )
 
     private var isPlaying = false
@@ -67,7 +66,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     private var currentGroupIndex = 0
     private var lastNoteTime: Long = 0
     private var accumulatedTicks: Int = 0
-    private var currentSong: List<List<Note>> = InstrumentTest // Установим тестовый лист по умолчанию
+    private var currentSong: List<List<Note>> = InstrumentTest
 
     override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
         val packet = interceptablePacket.packet
@@ -119,25 +118,23 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
 
     private fun playNoteGroup(noteGroup: List<Note>) {
         noteGroup.forEach { note ->
-            val key33 = (note.key - 33).coerceIn(0, 24)
-            val instrumentIdentifier = instrumentMap[note.instrument] ?: instrumentMap[0.toByte()] // По умолчанию Арфа
+            val instrument = note.instrument.coerceIn(0, 15)
+            val pitch = note.pitch.coerceIn(0, 15) // Ограничиваем высоту 0-15 (F#3-F#4)
 
-            val packet = LevelSoundEventPacket().apply {
-                sound = SoundEvent.NOTE
-                position = Vector3f.from(
-                    session.localPlayer.vec3Position.x,
-                    session.localPlayer.vec3Position.y,
-                    session.localPlayer.vec3Position.z
+            val packet = BlockEventPacket().apply {
+                blockPosition = Vector3i.from(
+                    session.localPlayer.vec3Position.x.toInt(),
+                    session.localPlayer.vec3Position.y.toInt(), // Позиция игрока
+                    session.localPlayer.vec3Position.z.toInt()
                 )
-                extraData = key33
-                identifier = instrumentIdentifier
-                isBabySound = false
-                isRelativeVolumeDisabled = false // Звук автоматически гаснет с расстоянием
+                eventType = instrument // Инструмент (0-15)
+                eventData = pitch // Высота тона
             }
             session.serverBound(packet)
 
-            // Логирование для теста
-            session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing instrument: ${note.instrument}, identifier: $instrumentIdentifier")
+            // Расширенное логирование для отладки
+            val instrumentName = instrumentNames[instrument] ?: "Неизвестный"
+            session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing: $instrumentName, pitch: $pitch, position: ${packet.blockPosition}, eventType: ${packet.eventType}, eventData: ${packet.eventData}")
         }
     }
 

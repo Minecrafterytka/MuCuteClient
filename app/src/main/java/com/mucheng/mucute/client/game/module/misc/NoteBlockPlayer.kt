@@ -4,11 +4,12 @@ import com.mucheng.mucute.client.game.InterceptablePacket
 import com.mucheng.mucute.client.game.Module
 import com.mucheng.mucute.client.game.ModuleCategory
 import org.cloudburstmc.math.vector.Vector3f
+import org.cloudburstmc.protocol.bedrock.data.EmoteFlag
 import org.cloudburstmc.protocol.bedrock.data.LevelEvent
 import org.cloudburstmc.protocol.bedrock.data.SoundEvent
 import org.cloudburstmc.protocol.bedrock.packet.*
 import kotlinx.serialization.Serializable
-import java.util.UUID
+import java.util.*
 
 class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
 
@@ -144,9 +145,12 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
 
                         // Активируем эмоцию
                         val emotePacket = EmotePacket()
-                        emotePacket.runtimeId = session.localPlayer.runtimeEntityId
-                        emotePacket.emoteID = "8b6e1390-6622-4f9a-b9d2-2db9d8b6d7d4" // Эмоция "Wave"
-                        emotePacket.flags = 0
+                        emotePacket.runtimeEntityId = session.localPlayer.runtimeEntityId
+                        emotePacket.xuid = session.localPlayer.xuid ?: "" // Если доступно
+                        emotePacket.platformId = "unknown" // Замени на реальный platformId, если доступен
+                        emotePacket.emoteId = "8b6e1390-6622-4f9a-b9d2-2db9d8b6d7d4" // Эмоция "Wave"
+                        emotePacket.flags.add(EmoteFlag.SERVER_SIDE) // Обработка на сервере
+                        emotePacket.emoteDuration = 20 // Длительность 1 секунда (20 тиков)
                         session.serverBound(emotePacket)
                     }
                     else -> {
@@ -205,15 +209,15 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
             soundPacket.setEntityUniqueId(-1L)
             session.serverBound(soundPacket)
 
-            // Добавление частиц нот
+            // Добавление частиц
             val particlePacket = LevelEventPacket()
-            particlePacket.setType(LevelEvent.PARTICLE_NOTE)
+            particlePacket.setType(LevelEvent.PARTICLE_CRITICAL) // Используем CRITICAL как временный заменитель
             particlePacket.setPosition(Vector3f.from(
                 session.localPlayer.vec3Position.x,
                 session.localPlayer.vec3Position.y + 1.5f, // Чуть выше головы игрока
                 session.localPlayer.vec3Position.z
             ))
-            particlePacket.setData(note.pitch.coerceIn(0, 24)) // Цвет частицы зависит от высоты
+            particlePacket.setData(note.pitch.coerceIn(0, 24)) // Данные для эффекта
             session.serverBound(particlePacket)
 
             // Отладка

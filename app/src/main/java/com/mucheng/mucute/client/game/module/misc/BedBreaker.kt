@@ -58,7 +58,7 @@ class BedBreaker : Module("BedBreaker", ModuleCategory.Misc) {
         // Это полезно для режима autoSearch, но blockMap неполный без обработки LevelChunkPacket
         if (packet is UpdateBlockPacket) {
             val blockPos = packet.blockPosition
-            val blockId = packet.definition.identifier // Получаем строковый идентификатор блока
+            val blockId = packet.definition.getIdentifier() // Получаем строковый идентификатор блока
             
             // Проверяем, является ли блок кроватью (или частью кровати)
             if (blockId.contains("bed", ignoreCase = true)) {

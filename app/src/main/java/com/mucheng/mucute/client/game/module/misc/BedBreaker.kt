@@ -53,7 +53,7 @@ class BedBreaker : Module("BedBreaker", ModuleCategory.Misc) {
         if (packet is UpdateBlockPacket) {
             val blockPos = packet.blockPosition
             // ИСПРАВЛЕНИЕ для getIdentifier: Попытка использовать getId()
-            val blockId = packet.definition.getId() // Попытка получить идентификатор через getId()
+            val blockId = packet.definition.getName() // Попытка получить идентификатор через getId()
             
             if (blockId != null && blockId.contains("bed", ignoreCase = true)) { // Проверяем, что blockId не null
                 blockMap[blockPos] = blockId

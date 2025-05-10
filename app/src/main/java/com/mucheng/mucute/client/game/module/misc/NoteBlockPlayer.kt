@@ -12,7 +12,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
 
     // Настройки
     private val playMusic by boolValue("play_music", true)
-    private val tickDuration by intValue("tickDuration", 50, 10..500) // Темп для теста
+    private val tickDuration by intValue("tickDuration", 100, 50..200) // Темп для "Waiting" (~60 BPM)
 
     // Данные нот
     @Serializable
@@ -21,13 +21,89 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     @Serializable
     data class Note(val soundName: String, val pitch: Float, val duration: Int)
 
-    // Тестовый лист с новыми названиями звуков
-    private val SoundTest = listOf(
-        listOf(Note("note.harp", 1.0f, 10)),    // Арфа
-        listOf(Note("note.bass", 1.0f, 10)),    // Бас
-        listOf(Note("note.bell", 1.0f, 10)),    // Колокол
-        listOf(Note("note.snare", 1.0f, 10)),   // Барабан
-        listOf(Note("note.hat", 1.0f, 10))      // Хай-хэт
+    // Расширенная версия "Waiting" (первые ~15 секунд)
+    private val Waiting = listOf(
+        // 0–4 сек: Аккорды Cmaj → Fmaj → Gmaj → Am
+        listOf(
+            Note("note.harp", 0.5f, 20),   // C4
+            Note("note.harp", 0.63f, 20),  // E4
+            Note("note.harp", 0.79f, 20)   // G4
+        ),
+        listOf(),
+        listOf(
+            Note("note.harp", 0.67f, 20),  // F4
+            Note("note.harp", 0.89f, 20),  // A4
+            Note("note.harp", 1.0f, 20)    // C5
+        ),
+        listOf(),
+        listOf(
+            Note("note.harp", 0.79f, 20),  // G4
+            Note("note.harp", 0.94f, 20),  // B4
+            Note("note.harp", 1.06f, 20)   // D5
+        ),
+        listOf(),
+        listOf(
+            Note("note.harp", 0.89f, 20),  // A4
+            Note("note.harp", 1.0f, 20),   // C5
+            Note("note.harp", 1.26f, 20)   // E5
+        ),
+        listOf(),
+
+        // 4–8 сек: Повторение аккордов с мелодией (G4, A4, F4, E4)
+        listOf(
+            Note("note.harp", 0.5f, 20),   // C4
+            Note("note.harp", 0.63f, 20),  // E4
+            Note("note.harp", 0.79f, 20),  // G4
+            Note("note.bell", 0.79f, 10)   // G4 (мелодия)
+        ),
+        listOf(Note("note.bell", 0.89f, 10)),  // A4
+        listOf(
+            Note("note.harp", 0.67f, 20),  // F4
+            Note("note.harp", 0.89f, 20),  // A4
+            Note("note.harp", 1.0f, 20),   // C5
+            Note("note.bell", 0.67f, 10)   // F4 (мелодия)
+        ),
+        listOf(Note("note.bell", 0.63f, 10)),  // E4
+        listOf(
+            Note("note.harp", 0.79f, 20),  // G4
+            Note("note.harp", 0.94f, 20),  // B4
+            Note("note.harp", 1.06f, 20)   // D5
+        ),
+        listOf(),
+        listOf(
+            Note("note.harp", 0.89f, 20),  // A4
+            Note("note.harp", 1.0f, 20),   // C5
+            Note("note.harp", 1.26f, 20)   // E5
+        ),
+        listOf(),
+
+        // 8–12 сек: Вторая часть мелодии (C5, D5, B4, G4)
+        listOf(
+            Note("note.harp", 0.5f, 20),   // C4
+            Note("note.harp", 0.63f, 20),  // E4
+            Note("note.harp", 0.79f, 20),  // G4
+            Note("note.bell", 1.0f, 10)    // C5 (мелодия)
+        ),
+        listOf(Note("note.bell", 1.06f, 10)),  // D5
+        listOf(
+            Note("note.harp", 0.67f, 20),  // F4
+            Note("note.harp", 0.89f, 20),  // A4
+            Note("note.harp", 1.0f, 20),   // C5
+            Note("note.bell", 0.94f, 10)   // B4 (мелодия)
+        ),
+        listOf(Note("note.bell", 0.79f, 10)),  // G4
+        listOf(
+            Note("note.harp", 0.79f, 20),  // G4
+            Note("note.harp", 0.94f, 20),  // B4
+            Note("note.harp", 1.06f, 20)   // D5
+        ),
+        listOf(),
+        listOf(
+            Note("note.harp", 0.89f, 20),  // A4
+            Note("note.harp", 1.0f, 20),   // C5
+            Note("note.harp", 1.26f, 20)   // E5
+        ),
+        listOf()
     )
 
     private var isPlaying = false
@@ -35,7 +111,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     private var currentGroupIndex = 0
     private var lastNoteTime: Long = 0
     private var accumulatedTicks: Int = 0
-    private var currentSong: List<List<Note>> = SoundTest
+    private var currentSong: List<List<Note>> = Waiting
 
     override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
         val packet = interceptablePacket.packet
@@ -51,8 +127,22 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
                         stopPlaying()
                         session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aSound Test stopped")
                     }
+                    args.contains("waiting") -> {
+                        isRepeating = args.contains("repeat")
+                        currentSong = Waiting
+                        startPlaying()
+                        val repeatMessage = if (isRepeating) " with repeat" else " (once)"
+                        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aStarting Waiting by C418$repeatMessage")
+                    }
                     else -> {
                         isRepeating = args.contains("repeat")
+                        currentSong = listOf(
+                            listOf(Note("note.harp", 1.0f, 10)),
+                            listOf(Note("note.bass", 1.0f, 10)),
+                            listOf(Note("note.bell", 1.0f, 10)),
+                            listOf(Note("note.snare", 1.0f, 10)),
+                            listOf(Note("note.hat", 1.0f, 10))
+                        )
                         startPlaying()
                         val repeatMessage = if (isRepeating) " with repeat" else " (once)"
                         session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aStarting Sound Test$repeatMessage")
@@ -97,13 +187,11 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
             ))
             packet.setVolume(1.0f)
             packet.setPitch(note.pitch)
-
-            // Пробуем оба направления
             session.serverBound(packet)
             session.clientBound(packet)
 
             // Отладка
-            session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Sent packet: sound=${note.soundName}, pitch=${note.pitch}, pos=${session.localPlayer.vec3Position}")
+            session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing: ${note.soundName}, pitch=${note.pitch}")
         }
     }
 

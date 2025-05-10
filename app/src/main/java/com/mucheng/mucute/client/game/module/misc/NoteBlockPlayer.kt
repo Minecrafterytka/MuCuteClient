@@ -22,24 +22,13 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     @Serializable
     data class Note(val sound: SoundEvent, val identifier: String, val pitch: Int, val duration: Int)
 
-    // Тестовый лист для экспериментов с разными sound и identifier
+    // Тестовый лист для экспериментов с разными identifier
     private val SoundTest = listOf(
-        // Тестируем разные SoundEvent с пустым identifier
-        listOf(Note(SoundEvent.NOTE, "", 12, 10)),           // Пианино/Арфа (ожидаемо)
-        listOf(Note(SoundEvent.NOTE_BASS, "", 12, 10)),      // Пробуем бас
-        listOf(Note(SoundEvent.NOTE_BASS_DRUM, "", 12, 10)), // Пробуем бас-барабан
-        listOf(Note(SoundEvent.NOTE_SNARE, "", 12, 10)),     // Пробуем малый барабан
-        listOf(Note(SoundEvent.NOTE_HAT, "", 12, 10)),       // Пробуем щелчки
-        listOf(Note(SoundEvent.NOTE_BELL, "", 12, 10)),      // Пробуем колокольчик
-        listOf(Note(SoundEvent.NOTE_FLUTE, "", 12, 10)),     // Пробуем флейту
-        listOf(Note(SoundEvent.NOTE_CHIME, "", 12, 10)),     // Пробуем колокольчики
-        listOf(Note(SoundEvent.NOTE_GUITAR, "", 12, 10)),    // Пробуем гитару
-        listOf(Note(SoundEvent.NOTE_XYLOPHONE, "", 12, 10)), // Пробуем ксилофон
-
-        // Тестируем SoundEvent.NOTE с разными identifier
-        listOf(Note(SoundEvent.NOTE, "harp", 12, 10)),       // Прямое название инструмента
+        // Тестируем только SoundEvent.NOTE с разными identifier
+        listOf(Note(SoundEvent.NOTE, "", 12, 10)),               // Пустой identifier (ожидаем пианино/арфу)
+        listOf(Note(SoundEvent.NOTE, "harp", 12, 10)),           // Прямое название инструмента
         listOf(Note(SoundEvent.NOTE, "bass", 12, 10)),
-        listOf(Note(SoundEvent.NOTE, "bd", 12, 10)),         // Бас-барабан (сокращение)
+        listOf(Note(SoundEvent.NOTE, "bd", 12, 10)),             // Бас-барабан (сокращение)
         listOf(Note(SoundEvent.NOTE, "snare", 12, 10)),
         listOf(Note(SoundEvent.NOTE, "hat", 12, 10)),
         listOf(Note(SoundEvent.NOTE, "bell", 12, 10)),
@@ -47,8 +36,13 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
         listOf(Note(SoundEvent.NOTE, "chime", 12, 10)),
         listOf(Note(SoundEvent.NOTE, "guitar", 12, 10)),
         listOf(Note(SoundEvent.NOTE, "xylophone", 12, 10)),
-
-        // Тестируем SoundEvent.NOTE с identifier в формате minecraft:block
+        listOf(Note(SoundEvent.NOTE, "iron_xylophone", 12, 10)),
+        listOf(Note(SoundEvent.NOTE, "cow_bell", 12, 10)),
+        listOf(Note(SoundEvent.NOTE, "didgeridoo", 12, 10)),
+        listOf(Note(SoundEvent.NOTE, "bit", 12, 10)),
+        listOf(Note(SoundEvent.NOTE, "banjo", 12, 10)),
+        listOf(Note(SoundEvent.NOTE, "pling", 12, 10)),
+        // Тестируем identifier в формате minecraft:block
         listOf(Note(SoundEvent.NOTE, "minecraft:planks", 12, 10)),
         listOf(Note(SoundEvent.NOTE, "minecraft:stone", 12, 10)),
         listOf(Note(SoundEvent.NOTE, "minecraft:sand", 12, 10)),
@@ -130,7 +124,7 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
             session.serverBound(packet)
 
             // Логирование для теста
-            session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing sound: ${note.sound}, identifier: ${note.identifier}, pitch: $pitch")
+            session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing identifier: ${note.identifier}, pitch: $pitch")
         }
     }
 

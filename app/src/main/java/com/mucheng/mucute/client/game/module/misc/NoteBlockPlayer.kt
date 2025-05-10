@@ -21,11 +21,13 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
     @Serializable
     data class Note(val soundName: String, val pitch: Float, val duration: Int)
 
-    // Тестовый лист с упрощёнными звуками
+    // Тестовый лист с новыми названиями звуков
     private val SoundTest = listOf(
-        listOf(Note("block.note_block.harp", 1.0f, 10)), // Проверяем арфу
-        listOf(Note("block.note_block.bass", 1.0f, 10)), // Проверяем бас
-        listOf(Note("block.note_block.bell", 1.0f, 10))  // Проверяем колокол
+        listOf(Note("note.harp", 1.0f, 10)),    // Арфа
+        listOf(Note("note.bass", 1.0f, 10)),    // Бас
+        listOf(Note("note.bell", 1.0f, 10)),    // Колокол
+        listOf(Note("note.snare", 1.0f, 10)),   // Барабан
+        listOf(Note("note.hat", 1.0f, 10))      // Хай-хэт
     )
 
     private var isPlaying = false
@@ -95,9 +97,12 @@ class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
             ))
             packet.setVolume(1.0f)
             packet.setPitch(note.pitch)
-            session.serverBound(packet)
 
-            // Отладка: подтверждаем отправку пакета
+            // Пробуем оба направления
+            session.serverBound(packet)
+            session.clientBound(packet)
+
+            // Отладка
             session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Sent packet: sound=${note.soundName}, pitch=${note.pitch}, pos=${session.localPlayer.vec3Position}")
         }
     }

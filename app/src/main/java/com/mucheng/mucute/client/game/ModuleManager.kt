@@ -47,7 +47,7 @@ import com.mucheng.mucute.client.game.module.misc.FakeDeathModule
 import com.mucheng.mucute.client.game.module.misc.FakeXPModule
 import com.mucheng.mucute.client.game.module.misc.NoChatModule
 import com.mucheng.mucute.client.game.module.motion.NoClipModule
-import com.mucheng.mucute.client.game.module.misc.NoteBlockPlayer
+import com.mucheng.mucute.client.game.module.misc.BedBreaker
 import com.mucheng.mucute.client.game.module.misc.PositionLoggerModule
 import com.mucheng.mucute.client.game.module.misc.ReplayModule
 import com.mucheng.mucute.client.game.module.visual.TimeShiftModule
@@ -98,7 +98,7 @@ object ModuleManager {
         with(_modules) {
             add(FlyModule())
             add(ESPModule())
-            add(NoteBlockPlayer())
+            add(BedBreaker())
             add(ZoomModule())
             add(AirJumpModule())
             add(NoClipModule())

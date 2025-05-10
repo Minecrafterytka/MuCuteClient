@@ -4,240 +4,147 @@ import com.mucheng.mucute.client.game.InterceptablePacket
 import com.mucheng.mucute.client.game.Module
 import com.mucheng.mucute.client.game.ModuleCategory
 import org.cloudburstmc.math.vector.Vector3f
-import org.cloudburstmc.protocol.bedrock.data.EmoteFlag
-import org.cloudburstmc.protocol.bedrock.data.LevelEvent
+import org.cloudburstmc.math.vector.Vector3i // Добавляем импорт для Vector3i
 import org.cloudburstmc.protocol.bedrock.data.SoundEvent
-import org.cloudburstmc.protocol.bedrock.packet.*
-import kotlinx.serialization.Serializable
-import java.util.*
+import org.cloudburstmc.protocol.bedrock.packet.LevelSoundEventPacket
+import org.cloudburstmc.protocol.bedrock.packet.TextPacket
+import org.cloudburstmc.protocol.bedrock.packet.BlockEventPacket // Добавляем импорт для BlockEventPacket
 
 class NoteBlockPlayer : Module("NoteBlockPlayer", ModuleCategory.Misc) {
 
     // Настройки
     private val playMusic by boolValue("play_music", true)
-    private val tickDuration by intValue("tickDuration", 250, 100..500) // Интервал 250 мс
+    // instrument setting не будем использовать напрямую в playNote,
+    // берем instrument из самой Note
+    // private val instrumentSetting by intValue("instrument", 0, 0..15) // Настройка для выбора инструмента по умолчанию/теста?
 
     // Данные нот
-    @Serializable
-    data class Song(val name: String, val tempo: Int, val notes: List<List<Note>>)
+    // instrument: 0-15 (Согласно вашему утверждению о 16 инструментах)
+    // key: высота ноты, например, по стандарту Minecraft (F#2=33)
+    data class Note(val instrument: Byte, val key: Byte, val duration: Int)
 
-    @Serializable
-    data class Note(val soundEvent: SoundEvent, val pitch: Int, val duration: Int)
-
-    // Расширенная версия "Waiting" (первые ~15 секунд)
-    private val Waiting = listOf(
-        // 0–4 сек: Аккорды Cmaj → Fmaj → Gmaj → Am
-        listOf(
-            Note(SoundEvent.NOTE, 0, 25),   // C4
-            Note(SoundEvent.NOTE, 4, 25),   // E4
-            Note(SoundEvent.NOTE, 7, 25)    // G4
-        ),
-        listOf(),
-        listOf(
-            Note(SoundEvent.NOTE, 5, 25),   // F4
-            Note(SoundEvent.NOTE, 9, 25),   // A4
-            Note(SoundEvent.NOTE, 12, 25)   // C5
-        ),
-        listOf(),
-        listOf(
-            Note(SoundEvent.NOTE, 7, 25),   // G4
-            Note(SoundEvent.NOTE, 11, 25),  // B4
-            Note(SoundEvent.NOTE, 14, 25)   // D5
-        ),
-        listOf(),
-        listOf(
-            Note(SoundEvent.NOTE, 9, 25),   // A4
-            Note(SoundEvent.NOTE, 12, 25),  // C5
-            Note(SoundEvent.NOTE, 16, 25)   // E5
-        ),
-        listOf(),
-
-        // 4–8 сек: Повторение аккордов с мелодией (G4, A4, F4, E4)
-        listOf(
-            Note(SoundEvent.NOTE, 0, 25),   // C4
-            Note(SoundEvent.NOTE, 4, 25),   // E4
-            Note(SoundEvent.NOTE, 7, 25),   // G4
-            Note(SoundEvent.NOTE, 7, 12)    // G4 (мелодия)
-        ),
-        listOf(Note(SoundEvent.NOTE, 9, 12)),  // A4
-        listOf(
-            Note(SoundEvent.NOTE, 5, 25),   // F4
-            Note(SoundEvent.NOTE, 9, 25),   // A4
-            Note(SoundEvent.NOTE, 12, 25),  // C5
-            Note(SoundEvent.NOTE, 5, 12)    // F4 (мелодия)
-        ),
-        listOf(Note(SoundEvent.NOTE, 4, 12)),  // E4
-        listOf(
-            Note(SoundEvent.NOTE, 7, 25),   // G4
-            Note(SoundEvent.NOTE, 11, 25),  // B4
-            Note(SoundEvent.NOTE, 14, 25)   // D5
-        ),
-        listOf(),
-        listOf(
-            Note(SoundEvent.NOTE, 9, 25),   // A4
-            Note(SoundEvent.NOTE, 12, 25),  // C5
-            Note(SoundEvent.NOTE, 16, 25)   // E5
-        ),
-        listOf(),
-
-        // 8–12 сек: Вторая часть мелодии (C5, D5, B4, G4)
-        listOf(
-            Note(SoundEvent.NOTE, 0, 25),   // C4
-            Note(SoundEvent.NOTE, 4, 25),   // E4
-            Note(SoundEvent.NOTE, 7, 25),   // G4
-            Note(SoundEvent.NOTE, 12, 12)   // C5 (мелодия)
-        ),
-        listOf(Note(SoundEvent.NOTE, 14, 12)),  // D5
-        listOf(
-            Note(SoundEvent.NOTE, 5, 25),   // F4
-            Note(SoundEvent.NOTE, 9, 25),   // A4
-            Note(SoundEvent.NOTE, 12, 25),  // C5
-            Note(SoundEvent.NOTE, 11, 12)   // B4 (мелодия)
-        ),
-        listOf(Note(SoundEvent.NOTE, 7, 12)),  // G4
-        listOf(
-            Note(SoundEvent.NOTE, 7, 25),   // G4
-            Note(SoundEvent.NOTE, 11, 25),  // B4
-            Note(SoundEvent.NOTE, 14, 25)   // D5
-        ),
-        listOf(),
-        listOf(
-            Note(SoundEvent.NOTE, 9, 25),   // A4
-            Note(SoundEvent.NOTE, 12, 25),  // C5
-            Note(SoundEvent.NOTE, 16, 25)   // E5
-        ),
-        listOf()
+    private val AnySong = listOf(
+        Note(0, 45, 20), // Инструмент 0 (Арфа?), A3, длительность 2 секунды
+    Note(1, 45, 20), // Инструмент 1, A3
+    Note(2, 45, 20), // Инструмент 2, A3
+    Note(3, 45, 20), // Инструмент 3, A3
+    Note(4, 45, 20), // Инструмент 4, A3
+    Note(5, 45, 20), // Инструмент 5, A3
+    Note(6, 45, 20), // Инструмент 6, A3
+    Note(7, 45, 20), // Инструмент 7, A3
+    Note(8, 45, 20), // Инструмент 8, A3
+    Note(9, 45, 20), // Инструмент 9, A3
+    Note(10, 45, 20),// Инструмент 10, A3
+    Note(11, 45, 20),// Инструмент 11, A3
+    Note(12, 45, 20),// Инструмент 12, A3
+    Note(13, 45, 20),// Инструмент 13, A3
+    Note(14, 45, 20),// Инструмент 14, A3
+    Note(15, 45, 20) // Инструмент 15, A3
     )
 
     private var isPlaying = false
-    private var isRepeating = false
-    private var currentGroupIndex = 0
+    private var currentNoteIndex = 0
     private var lastNoteTime: Long = 0
     private var accumulatedTicks: Int = 0
-    private var currentSong: List<List<Note>> = Waiting
 
     override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
         val packet = interceptablePacket.packet
 
         // Обработка команды .playnote
         if (packet is TextPacket && packet.type == TextPacket.Type.CHAT) {
-            val message = packet.message.trim()
-            if (message.startsWith(".playnote")) {
+            val message = packet.message
+            if (message == ".playnote") {
                 interceptablePacket.intercept()
-                val args = message.split(" ").drop(1)
-                when {
-                    args.contains("stop") -> {
-                        stopPlaying()
-                        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aSound Test stopped")
-                    }
-                    args.contains("waiting") -> {
-                        isRepeating = args.contains("repeat")
-                        currentSong = Waiting
-                        startPlaying()
-                        val repeatMessage = if (isRepeating) " with repeat" else " (once)"
-                        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aStarting Waiting by C418$repeatMessage")
-
-                        // Назначаем эмоцию игроку
-                        val emoteListPacket = EmoteListPacket()
-                        emoteListPacket.runtimeEntityId = session.localPlayer.runtimeEntityId
-                        emoteListPacket.pieceIds.add(UUID.fromString("8b6e1390-6622-4f9a-b9d2-2db9d8b6d7d4")) // Эмоция "Wave"
-                        session.serverBound(emoteListPacket)
-
-                        // Активируем эмоцию
-                        val emotePacket = EmotePacket()
-                        emotePacket.runtimeEntityId = session.localPlayer.runtimeEntityId
-                        emotePacket.xuid = session.localPlayer.xuid ?: "" // Если доступно
-                        emotePacket.platformId = "unknown" // Замени на реальный platformId, если доступен
-                        emotePacket.emoteId = "8b6e1390-6622-4f9a-b9d2-2db9d8b6d7d4" // Эмоция "Wave"
-                        emotePacket.flags.add(EmoteFlag.SERVER_SIDE) // Обработка на сервере
-                        emotePacket.emoteDuration = 20 // Длительность 1 секунда (20 тиков)
-                        session.serverBound(emotePacket)
-                    }
-                    else -> {
-                        isRepeating = args.contains("repeat")
-                        currentSong = listOf(
-                            listOf(Note(SoundEvent.NOTE, 12, 25)),  // C5 (harp)
-                        )
-                        startPlaying()
-                        val repeatMessage = if (isRepeating) " with repeat" else " (once)"
-                        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aStarting Sound Test$repeatMessage")
-                    }
-                }
+                startPlaying()
+                session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aStarting Nokia Tune")
             }
         }
 
         // Проигрывание мелодии
         if (isEnabled && playMusic && isPlaying) {
             val currentTime = System.currentTimeMillis()
-            if (currentTime - lastNoteTime >= tickDuration.toLong()) {
+            val tickDuration = 100L // Используем 100мс для "вашего" тика
+            if (currentTime - lastNoteTime >= tickDuration) {
                 accumulatedTicks++
-                if (currentGroupIndex < currentSong.size) {
-                    val noteGroup = currentSong[currentGroupIndex]
-                    val maxDuration = noteGroup.maxOfOrNull { it.duration } ?: 1
-                    if (accumulatedTicks >= maxDuration) {
-                        playNoteGroup(noteGroup)
-                        currentGroupIndex++
-                        accumulatedTicks = 0
-                        if (currentGroupIndex >= currentSong.size && !isRepeating) {
-                            stopPlaying()
-                        }
+
+                if (currentNoteIndex < AnySong.size) {
+                     val note = AnySong[currentNoteIndex]
+
+                    // Проверяем, достаточно ли тиков прошло для этой ноты
+                    if (accumulatedTicks * tickDuration >= note.duration * 100L) {
+                         playNote(note) // Играем ноту
+                         currentNoteIndex++ // Переходим к следующей
+                         accumulatedTicks = 0 // Сбрасываем счетчик тиков
                     }
-                } else if (isRepeating) {
-                    currentGroupIndex = 0
-                    accumulatedTicks = 0
-                    playNoteGroup(currentSong[0])
+
+                } else {
+                    // Мелодия закончилась
+                    stopPlaying()
                 }
-                lastNoteTime = currentTime
+                lastNoteTime = currentTime // Обновляем время для следующего цикла проверки
             }
         }
     }
 
-    private fun playNoteGroup(noteGroup: List<Note>) {
-        noteGroup.forEach { note ->
-            // Воспроизведение звука
-            val soundPacket = LevelSoundEventPacket()
-            soundPacket.setSound(note.soundEvent)
-            soundPacket.setPosition(Vector3f.from(
-                session.localPlayer.vec3Position.x,
-                session.localPlayer.vec3Position.y,
-                session.localPlayer.vec3Position.z
-            ))
-            soundPacket.setExtraData(note.pitch.coerceIn(0, 24)) // Высота (0-24)
-            soundPacket.setIdentifier("")
-            soundPacket.setBabySound(false)
-            soundPacket.setRelativeVolumeDisabled(false)
-            soundPacket.setEntityUniqueId(-1L)
-            session.serverBound(soundPacket)
+    private fun playNote(note: Note) {
+        // Позиция виртуального блока (например, позиция игрока)
+        val playerPosition = session.localPlayer.vec3Position
+        val blockPosition = Vector3i.from(playerPosition.x.toInt(), playerPosition.y.toInt(), playerPosition.z.toInt())
 
-            // Добавление частиц
-            val particlePacket = LevelEventPacket()
-            particlePacket.setType(LevelEvent.PARTICLE_CRITICAL) // Используем CRITICAL как временный заменитель
-            particlePacket.setPosition(Vector3f.from(
-                session.localPlayer.vec3Position.x,
-                session.localPlayer.vec3Position.y + 1.5f, // Чуть выше головы игрока
-                session.localPlayer.vec3Position.z
-            ))
-            particlePacket.setData(note.pitch.coerceIn(0, 24)) // Данные для эффекта
-            session.serverBound(particlePacket)
+        // ---------- НОВАЯ ГИПОТЕЗА ----------
+        // Согласно вашему утверждению: 16 инструментов = 0-15.
+        // BlockEventPacket имеет поле eventData с диапазоном 0-15.
+        // Попробуем использовать eventData для ИНСТРУМЕНТА (0-15).
+        val instrumentEventData = note.instrument.toInt().coerceIn(0, 15) // Инструмент 0-15
 
-            // Отладка
-            session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Playing: ${note.soundEvent}, pitch=${note.pitch}")
+        // Высота ноты: key 33 (F#2) соответствует pitch 0 в Minecraft (0-24 для SoundEvent.NOTE)
+        // BlockEventPacket имеет поле eventType (0-4) и eventData (0-15).
+        // Если eventData теперь инструмент, куда девать высоту?
+        // Вариант 1: eventType (0-4) используется для высоты? (Очень грубое отображение 0-24 -> 0-4)
+        // Вариант 2: Высота игнорируется в этом пакете? (Маловероятно)
+        // Вариант 3: eventData кодирует И инструмент И высоту? (Возможно, но сложно без док)
+        // Вариант 4: Высота все еще в LevelSoundEventPacket с SoundEvent.NOTE после BlockEventPacket? (Странно)
+
+        // Давайте попробуем Вариант 1: Используем eventType (0-4) для высоты.
+        // Это очень неточно, но это единственное оставшееся поле с маленьким диапазоном.
+        // Отобразим pitch 0-24 в eventType 0-4. Например, делением.
+        val basePitch0_24 = note.key - 33
+        val pitchEventType = (basePitch0_24 / 5).coerceIn(0, 4) // Грубое отображение 0-24 на 0-4
+
+        // Если это не сработает, возможно, высота остается в eventData, а инструмент
+        // кодируется как-то иначе или в другом поле, или ваша информация относится не к этому пакету.
+        // Но пробуем эту гипотезу, так как она соответствует вашему "0-15 инструментов".
+
+        // Создание и отправка BlockEventPacket
+        val blockEventPacket = BlockEventPacket().apply {
+            setBlockPosition(blockPosition)
+            setEventType(pitchEventType)     // Попытка использовать eventType для высоты (0-4)
+            setEventData(instrumentEventData) // Использовать eventData для ИНСТРУМЕНТА (0-15)
         }
+        session.serverBound(blockEventPacket)
+
+        // Отладка
+        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§7Sending BlockEvent: pos=$blockPosition, instrument(eventData)=$instrumentEventData (from note.instrument ${note.instrument}), pitch_mapped(eventType)=$pitchEventType (from key ${note.key})")
+
+        // В этой гипотезе LevelSoundEventPacket, вероятно, не нужен для контроля инструмента/высоты
+        // поскольку мы пытаемся сделать это через BlockEventPacket.
+
     }
 
     private fun startPlaying() {
         isPlaying = true
-        currentGroupIndex = 0
+        currentNoteIndex = 0
         accumulatedTicks = 0
-        lastNoteTime = System.currentTimeMillis()
+        lastNoteTime = System.currentTimeMillis() // Инициализация для первого тика
+        session.displayClientMessage("Player position: ${session.localPlayer.vec3Position}")
+        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aNokia Tune started")
     }
 
     private fun stopPlaying() {
         isPlaying = false
-        isRepeating = false
-        currentGroupIndex = 0
+        currentNoteIndex = 0
         accumulatedTicks = 0
-        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aSound Test stopped")
+        session.displayClientMessage("§l§b[NoteBlockPlayer] §r§aNokia Tune stopped")
     }
 
     override fun onDisabled() {

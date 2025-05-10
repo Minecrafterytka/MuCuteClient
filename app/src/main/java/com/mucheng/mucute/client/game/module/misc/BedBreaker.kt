@@ -13,6 +13,9 @@ import org.cloudburstmc.protocol.bedrock.packet.TextPacket
 import org.cloudburstmc.protocol.bedrock.packet.UpdateBlockPacket
 import java.util.concurrent.ConcurrentHashMap
 
+// Импортируем конкретный класс NbtBlockDefinition из вашего Relay
+import com.mucheng.mucute.relay.definition.NbtBlockDefinition 
+
 class BedBreaker : Module("BedBreaker", ModuleCategory.Misc) {
 
     // Настройки
@@ -52,15 +55,33 @@ class BedBreaker : Module("BedBreaker", ModuleCategory.Misc) {
         // --- Отслеживание блоков (для blockMap) ---
         if (packet is UpdateBlockPacket) {
             val blockPos = packet.blockPosition
-            val blockId = packet.definition.tag.getString("name") // Получаем идентификатор блока из NbtMap
-
             
-            if (blockId != null && blockId.contains("bed", ignoreCase = true)) { // Проверяем, что blockId не null
-                blockMap[blockPos] = blockId
-            } else {
-                 if (blockMap.containsKey(blockPos)) {
-                    blockMap.remove(blockPos)
+            // --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ: Приведение типа для доступа к 'tag' ---
+            // Приводим packet.definition к конкретному типу NbtBlockDefinition
+            val nbtBlockDefinition = packet.definition as? NbtBlockDefinition 
+
+            // Проверяем, успешно ли приведение типа и объект не null
+            if (nbtBlockDefinition != null) {
+                // Теперь можем безопасно получить доступ к полю tag
+                val blockId = nbtBlockDefinition.tag.getString("name")
+
+                // Проверяем, что blockId не null и содержит "bed"
+                if (blockId != null && blockId.contains("bed", ignoreCase = true)) {
+                    blockMap[blockPos] = blockId
+                     // session.displayClientMessage("§l§b[BedBreaker] §r§aBed detected/updated at " + blockPos.x + " " + blockPos.y + " " + blockPos.z)
+                } else {
+                     // Если блок больше не кровать или blockId стал null, удаляем из мапы
+                     if (blockMap.containsKey(blockPos)) {
+                        blockMap.remove(blockPos)
+                        // session.displayClientMessage("§l§b[BedBreaker] §r§7Block at " + blockPos.x + " " + blockPos.y + " " + blockPos.z + " is no longer a bed.")
+                    }
                 }
+            } else {
+                // Если приведение типа не удалось (очень маловероятно)
+                 // session.displayClientMessage("§l§b[BedBreaker] §r§cWarning: Could not cast BlockDefinition to NbtBlockDefinition at " + blockPos.x + " " + blockPos.y + " " + blockPos.z)
+                 if (blockMap.containsKey(blockPos)) {
+                    blockMap.remove(blockPos) // Удаляем из мапы
+                 }
             }
         }
 
@@ -88,21 +109,17 @@ class BedBreaker : Module("BedBreaker", ModuleCategory.Misc) {
                         action = PlayerActionType.START_BREAK
                         blockPosition = targetBedPos!!
                         face = 0
-                        // resultPosition удален
                     }
                     val abortBreakAction = PlayerBlockActionData().apply {
                          action = PlayerActionType.ABORT_BREAK
                          blockPosition = targetBedPos!!
                          face = 0
-                        // resultPosition удален
                     }
 
-                    // ИСПРАВЛЕНИЕ для blockActions: Получаем СУЩЕСТВУЮЩИЙ список и добавляем в него
-                    // Список PlayerBlockActionData в пакете называется playerActions
-                    packet.getPlayerActions().add(startBreakAction) // Добавляем действие START_BREAK
-                    packet.getPlayerActions().add(abortBreakAction) // Добавляем действие ABORT_BREAK
+                    // Получаем СУЩЕСТВУЮЩИЙ список действий и добавляем в него
+                    packet.getPlayerActions().add(startBreakAction)
+                    packet.getPlayerActions().add(abortBreakAction)
                     
-                    // Убеждаемся, что флаг PERFORM_BLOCK_ACTIONS установлен
                     if (!packet.inputData.contains(PlayerAuthInputData.PERFORM_BLOCK_ACTIONS)) {
                          packet.inputData.add(PlayerAuthInputData.PERFORM_BLOCK_ACTIONS)
                     }
@@ -112,7 +129,7 @@ class BedBreaker : Module("BedBreaker", ModuleCategory.Misc) {
                     session.displayClientMessage("§l§b[BedBreaker] §r§aAttempting quick break of block at " + targetBedPos!!.x + " " + targetBedPos!!.y + " " + targetBedPos!!.z + " (distance: " + String.format("%.1f", distanceToTarget) + ", range: " + range + ")")
 
                 } else {
-                     // session.displayClientMessage("§l§b[BedBreaker] §r§cTarget block at " + targetBedPos!!.x + " " + targetBedPos!!.y + " " + targetBedPos!!.z + " is out of range (" + String.format("%.1f", distanceToTarget) + " > " + range + ")")
+                     // session.displayClientMessage("§l§b[BedBreaker] §r§cTarget block at " + targetBedPos!!.x + " " + targetPos!!.y + " " + targetPos!!.z + " is out of range (" + String.format("%.1f", distanceToTarget) + " > " + range + ")")
                 }
             } else {
                // session.displayClientMessage("§l§b[BedBreaker] §r§cNo target block found in range or set.")
@@ -156,7 +173,7 @@ class BedBreaker : Module("BedBreaker", ModuleCategory.Misc) {
                     val blockPos = playerBlockPos.add(x, y, z)
                     val blockId = blockMap[blockPos]
                     
-                    if (blockId != null && blockId.contains("bed", ignoreCase = true)) { // Проверяем, что blockId не null
+                    if (blockId != null && blockId.contains("bed", ignoreCase = true)) {
                         val blockCenterPos = Vector3f.from(blockPos.x + 0.5f, blockPos.y + 0.5f, blockPos.z + 0.5f)
                         val distanceSq = playerPosition.distanceSquared(blockCenterPos)
                         

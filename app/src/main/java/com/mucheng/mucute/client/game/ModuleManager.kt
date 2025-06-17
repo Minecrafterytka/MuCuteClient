@@ -56,6 +56,7 @@ import com.mucheng.mucute.client.game.module.motion.AntiAFKModule
 import com.mucheng.mucute.client.game.module.motion.AutoWalkModule
 import com.mucheng.mucute.client.game.module.motion.BhopModule
 import com.mucheng.mucute.client.game.module.motion.FlyModule
+import com.mucheng.mucute.client.game.module.motion.TapTeleportModule
 import com.mucheng.mucute.client.game.module.motion.HighJumpModule
 import com.mucheng.mucute.client.game.module.motion.JetPackModule
 import com.mucheng.mucute.client.game.module.motion.MotionFlyModule
@@ -96,6 +97,7 @@ object ModuleManager {
     init {
         with(_modules) {
             add(FlyModule())
+            add(TapTeleportModule())
             add(ESPModule())
             add(ZoomModule())
             add(AirJumpModule())

@@ -14,6 +14,7 @@ import org.cloudburstmc.protocol.bedrock.data.command.CommandPermission
 import org.cloudburstmc.protocol.bedrock.packet.EntityFallPacket
 import org.cloudburstmc.protocol.bedrock.packet.InventoryTransactionPacket
 import org.cloudburstmc.protocol.bedrock.packet.MovePlayerPacket
+import org.cloudburstmc.protocol.bedrock.packet.PlayerAuthInputPacket // Import this
 import org.cloudburstmc.protocol.bedrock.packet.UpdateAbilitiesPacket
 import kotlin.random.Random
 
@@ -71,10 +72,19 @@ class TapTeleportModule : Module("tap_teleport", ModuleCategory.Motion) {
         })
     }
 
+    // Store the last known rotation from PlayerAuthInputPacket
+    private var lastKnownRotation: Vector3f = Vector3f.ZERO
+
     override fun beforePacketBound(interceptablePacket: InterceptablePacket) {
         if (!isEnabled) return
 
         val packet = interceptablePacket.packet
+
+        // Update lastKnownRotation if we receive a PlayerAuthInputPacket
+        if (packet is PlayerAuthInputPacket) {
+            lastKnownRotation = packet.rotation ?: Vector3f.ZERO
+            return // Skip further processing if it's just an input packet for rotation update
+        }
 
         if (packet is InventoryTransactionPacket) {
             if (packet.transactionType != org.cloudburstmc.protocol.bedrock.data.inventory.transaction.InventoryTransactionType.ITEM_USE) {
@@ -102,22 +112,21 @@ class TapTeleportModule : Module("tap_teleport", ModuleCategory.Motion) {
             val targetPos = Vector3f.from(x, y + 2f, z)
 
             coroutineScope.launch {
-                teleportTo(targetPos)
+                // Pass the last known rotation to the teleport function
+                teleportTo(targetPos, lastKnownRotation)
                 sendFallDamageReset()
             }
         }
     }
 
-    private fun teleportTo(position: Vector3f) {
+    private fun teleportTo(position: Vector3f, rotation: Vector3f) {
         val movePlayerPacket = MovePlayerPacket().apply {
             runtimeEntityId = session.localPlayer.runtimeEntityId
             this.position = position
-            // Use session.localPlayer.rotation directly from the Player class
-            this.rotation = session.localPlayer.rotation ?: Vector3f.ZERO
+            this.rotation = rotation // Use the rotation passed to the function
             mode = MovePlayerPacket.Mode.NORMAL
-            onGround = true
+            // onGround is private and removed
             ridingRuntimeEntityId = 0
-            // Use session.localPlayer.tickExists as confirmed by LocalPlayer class
             this.tick = session.localPlayer.tickExists
         }
         session.clientBound(movePlayerPacket)
@@ -127,7 +136,7 @@ class TapTeleportModule : Module("tap_teleport", ModuleCategory.Motion) {
         val fallPacket = EntityFallPacket().apply {
             runtimeEntityId = session.localPlayer.runtimeEntityId
             fallDistance = 0f
-            inVoid = false
+            // inVoid is private and removed
         }
         session.clientBound(fallPacket)
     }

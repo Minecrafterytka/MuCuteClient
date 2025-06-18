@@ -89,12 +89,14 @@ object Services {
             val selectedAccount = AccountManager.selectedAccount
             // Start MuCuteRelay to capture game packets
             runCatching {
+                android.util.Log.d("Services", "Starting MuCuteRelay...")
                 muCuteRelay = captureGamePacket(
                     remoteAddress = MuCuteAddress(
                         captureModeModel.serverHostName,
                         captureModeModel.serverPort
                     )
                 ) {
+                    android.util.Log.d("Services", "MuCuteRelay session created")
                     initModules(this)
 
                     listeners.add(AutoCodecPacketListener(this))
@@ -105,10 +107,12 @@ object Services {
                         )
                     )
                     listeners.add(GamingPacketHandler(this))
+                    android.util.Log.d("Services", "Listeners added")
                 }
+                android.util.Log.d("Services", "MuCuteRelay started")
             }.exceptionOrNull()?.let {
                 it.printStackTrace()
-                context.toast("Start MuCuteRelay error: ${it.stackTraceToString()}")
+                android.util.Log.e("Services", "Start MuCuteRelay error", it)
             }
 
         }

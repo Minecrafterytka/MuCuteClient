@@ -106,3 +106,4 @@ Use MuCuteClient at your **Own Risk**.
 We are **not responsible** for any bans, penalties, or issues that may result from using this client.
 
 **Always follow server rules and respect community standards.**
+
